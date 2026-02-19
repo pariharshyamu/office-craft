@@ -4511,7 +4511,7 @@ To use a tool, include <<TOOL:toolName>> in your response.`;
 
         // Execute AI tool calls found in response text
         function executeWordcraftAITools(text, outputEl) {
-            const toolRe = /<<TOOL:(\w+)(?:\|([^>]*))?>>)/gi;  // matches <<TOOL:name>> or <<TOOL:name|arg>>
+            const toolRe = /<<TOOL:(\w+)(?:\|([^>]*))?>>?/gi;  // matches <<TOOL:name>> or <<TOOL:name|arg>>
             const toolRe2 = /<<TOOL:(\w+)(?:\|([^>]*))?>/gi;
             let match;
             const results = [];

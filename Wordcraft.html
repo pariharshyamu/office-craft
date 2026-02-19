@@ -9,7 +9,6 @@
         href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap"
         rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.4.7/dist/html-docx.min.js"></script>
     <style>
         :root {
             --ink: #1a1a2e;
@@ -735,15 +734,49 @@
             width: 100%;
             max-width: 850px;
             min-height: 1056px;
-            /* ~11in at 96dpi, US Letter height */
             box-shadow: var(--page-shadow);
             border-radius: 3px;
             margin-bottom: 16px;
             position: relative;
             padding: 72px 72px;
-            /* ~1in margins */
             cursor: text;
             transition: padding 0.2s;
+        }
+
+        /* Visual page break markers */
+        .page-break-marker {
+            position: relative;
+            height: 32px;
+            margin: 18px -72px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .page-break-marker::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            border-top: 2px dashed var(--border, #d0d0d0);
+        }
+
+        .page-break-marker::after {
+            content: attr(data-label);
+            position: relative;
+            background: var(--cream, #f5f0eb);
+            padding: 2px 14px;
+            font-size: 10px;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--muted, #999);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            border-radius: 10px;
+            z-index: 1;
         }
 
         /* Content editable */
@@ -753,7 +786,7 @@
             font-size: 15px;
             line-height: 1.75;
             color: var(--ink);
-            min-height: 900px;
+            min-height: 912px;
             caret-color: var(--accent);
             overflow-wrap: break-word;
             word-wrap: break-word;
@@ -3281,6 +3314,51 @@
         editor.addEventListener('mouseup', updateFormatState);
         editor.addEventListener('touchend', updateFormatState);
 
+        // ── PAGINATION ──
+        const PAGE_CONTENT_HEIGHT = 912; // printable area per page in px (1056 - 72*2 margins)
+
+        function updatePagination() {
+            // Remove existing markers before measuring
+            editor.querySelectorAll('.page-break-marker').forEach(m => m.remove());
+
+            const totalHeight = editor.scrollHeight;
+            const pages = Math.max(1, Math.ceil(totalHeight / PAGE_CONTENT_HEIGHT));
+
+            if (pages <= 1) return 1;
+
+            // Walk through child nodes and find where page breaks should go
+            const children = Array.from(editor.children);
+            let accHeight = 0;
+            let currentPage = 1;
+            const breakPositions = [];
+
+            for (let i = 0; i < children.length; i++) {
+                const child = children[i];
+                if (child.classList && child.classList.contains('page-break-marker')) continue;
+                const rect = child.getBoundingClientRect();
+                const editorRect = editor.getBoundingClientRect();
+                const relativeTop = rect.top - editorRect.top;
+                const relativeBottom = relativeTop + rect.height;
+                const breakAt = currentPage * PAGE_CONTENT_HEIGHT;
+
+                if (relativeBottom > breakAt && currentPage < pages) {
+                    breakPositions.push({ before: child, page: currentPage + 1 });
+                    currentPage++;
+                }
+            }
+
+            // Insert page break markers
+            breakPositions.forEach(bp => {
+                const marker = document.createElement('div');
+                marker.className = 'page-break-marker';
+                marker.contentEditable = 'false';
+                marker.setAttribute('data-label', 'Page ' + bp.page);
+                editor.insertBefore(marker, bp.before);
+            });
+
+            return pages;
+        }
+
         // ── WORD COUNT ──
         let writingGoal = parseInt(localStorage.getItem('wc_goal') || '500');
 
@@ -3288,12 +3366,12 @@
             const text = editor.innerText || '';
             const words = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
             const chars = text.length;
-            const pages = Math.max(1, Math.ceil(words / 250));
             const readMin = Math.max(1, Math.round(words / 200));
+            const pages = updatePagination();
 
             document.getElementById('wcWords').textContent = 'Words: ' + words.toLocaleString();
             document.getElementById('wcChars').textContent = 'Chars: ' + chars.toLocaleString();
-            document.getElementById('wcPages').textContent = '~' + pages + ' page' + (pages !== 1 ? 's' : '');
+            document.getElementById('wcPages').textContent = pages + ' page' + (pages !== 1 ? 's' : '');
 
             document.getElementById('statWords').textContent = words.toLocaleString();
             document.getElementById('statChars').textContent = chars.toLocaleString();
@@ -3684,28 +3762,29 @@
                 blob = new Blob([md], { type: 'text/markdown' });
                 filename = fn + '.md';
             } else {
-                // docx — proper DOCX export using html-docx-js
-                try {
-                    const docxContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:'Calibri',sans-serif;font-size:11pt;line-height:1.6;color:#222;}h1{font-size:20pt;font-weight:bold;}h2{font-size:16pt;font-weight:bold;}h3{font-size:13pt;font-weight:bold;}ul,ol{margin-left:18pt;}blockquote{border-left:3pt solid #ccc;padding-left:10pt;color:#555;}table{border-collapse:collapse;width:100%;}td,th{border:1pt solid #ccc;padding:4pt 8pt;}</style></head><body>${content}</body></html>`;
-                    if (typeof htmlDocx !== 'undefined' && htmlDocx.asBlob) {
-                        blob = htmlDocx.asBlob(docxContent, { orientation: 'portrait', margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 } });
-                    } else {
-                        // Fallback: create DOCX-compatible Word XML
-                        const wordXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-                            `<?mso-application progid="Word.Document"?>` +
-                            `<w:wordDocument xmlns:w="http://schemas.microsoft.com/office/word/2003/wordml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">` +
-                            `<w:body>` +
-                            `<w:altChunk><w:altChunkPr><w:matchSrc/></w:altChunkPr></w:altChunk>` +
-                            `</w:body></w:wordDocument>`;
-                        const mhtml = 'MIME-Version: 1.0\r\nContent-Type: multipart/related; boundary="----=_NextPart"\r\n\r\n------=_NextPart\r\nContent-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n' + docxContent + '\r\n------=_NextPart--';
-                        blob = new Blob([docxContent], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-                    }
-                    filename = fn + '.docx';
-                } catch (docxErr) {
-                    console.error('DOCX export error:', docxErr);
-                    blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${content}</body></html>`], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-                    filename = fn + '.docx';
-                }
+                // docx — Word MHTML format (natively readable by Word & LibreOffice)
+                const cleanContent = content.replace(/<div class="page-break-marker"[^>]*><\/div>/g, '');
+                const styles = `
+                    body { font-family: 'Calibri', Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #222; margin: 1in; }
+                    h1 { font-size: 20pt; font-weight: bold; margin: 12pt 0 6pt; }
+                    h2 { font-size: 16pt; font-weight: bold; margin: 10pt 0 5pt; }
+                    h3 { font-size: 13pt; font-weight: bold; margin: 8pt 0 4pt; }
+                    p { margin: 0 0 6pt; }
+                    ul, ol { margin-left: 18pt; }
+                    blockquote { border-left: 3pt solid #ccc; padding-left: 10pt; color: #555; }
+                    table { border-collapse: collapse; width: 100%; }
+                    td, th { border: 1pt solid #999; padding: 4pt 8pt; }
+                    strong, b { font-weight: bold; }
+                    em, i { font-style: italic; }
+                    u { text-decoration: underline; }
+                `;
+                const htmlDoc = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>${fn}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+<style>${styles}</style></head>
+<body>${cleanContent}</body></html>`;
+                blob = new Blob(['\ufeff' + htmlDoc], { type: 'application/msword' });
+                filename = fn + '.doc';
             }
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);

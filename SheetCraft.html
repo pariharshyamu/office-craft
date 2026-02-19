@@ -1,0 +1,4267 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <meta name="description" content="SheetCraft — AI-Powered Spreadsheet with TinyLlama">
+  <title>SheetCraft — AI Spreadsheet</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600&family=Syne:wght@400;600;700;800&display=swap"
+    rel="stylesheet">
+  <style>
+    /* ══ DESIGN TOKENS ══ */
+    :root {
+      --bg0: #030810;
+      --bg1: #060c17;
+      --bg2: #0b1220;
+      --bg3: #111b2e;
+      --bg4: #172238;
+      --teal: #00ffcc;
+      --teal2: #00c9a0;
+      --teal3: #00896e;
+      --amber: #f5c518;
+      --orange: #ff6b35;
+      --red: #ff4466;
+      --purple: #b48aff;
+      --blue: #4a9eff;
+      --txt: #c2d8ee;
+      --txt2: #5a7a99;
+      --txt3: #3a5870;
+      --border: #162238;
+      --border2: #1e3050;
+      --border3: #243856;
+      --sel: rgba(0, 255, 204, .1);
+      --sel2: rgba(0, 255, 204, .22);
+      --grid: #0a1220;
+      --hbg: #08101e;
+      --htxt: #3a6888;
+      --col-w: 108px;
+      --row-h: 26px;
+      --hdr-w: 48px;
+      --hdr-h: 28px;
+      --toolbar-h: 40px;
+      --fbar-h: 32px;
+      --tabs-h: 32px;
+      --status-h: 24px;
+      --ai-w: 340px;
+      --radius: 6px;
+      --radius2: 10px;
+      --font-mono: 'Fira Code', monospace;
+      --font-ui: 'Syne', sans-serif;
+      --transition: .15s ease;
+    }
+
+    /* ══ RESET ══ */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg0);
+      color: var(--txt);
+      font-family: var(--font-ui)
+    }
+
+    ::-webkit-scrollbar {
+      width: 5px;
+      height: 5px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg1)
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg4);
+      border-radius: 3px
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--teal3)
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      font-family: inherit
+    }
+
+    button {
+      cursor: pointer
+    }
+
+    /* ══ APP SHELL ══ */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      position: relative
+    }
+
+    /* ══ TITLE BAR ══ */
+    #titlebar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 10px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border2);
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0
+    }
+
+    .logo-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, var(--teal), var(--teal3));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--teal);
+      letter-spacing: 1.5px;
+      white-space: nowrap
+    }
+
+    .logo-badge {
+      font-size: 9px;
+      color: var(--txt2);
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      padding: 2px 6px;
+      border-radius: 99px;
+      white-space: nowrap
+    }
+
+    .titlebar-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: hidden
+    }
+
+    .titlebar-actions::-webkit-scrollbar {
+      height: 0
+    }
+
+    /* ══ TOOLBAR ══ */
+    #toolbar {
+      height: var(--toolbar-h);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 3px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+
+    #toolbar::-webkit-scrollbar {
+      height: 0
+    }
+
+    .tb-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border2);
+      margin: 0 2px;
+      flex-shrink: 0
+    }
+
+    /* ══ FORMULA BAR ══ */
+    #fbar {
+      height: var(--fbar-h);
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 6px;
+      background: var(--bg1);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #cell-ref {
+      width: 58px;
+      height: 22px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--teal);
+      flex-shrink: 0
+    }
+
+    #fbar-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border2);
+      flex-shrink: 0
+    }
+
+    #fbar-fx {
+      color: var(--teal);
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      flex-shrink: 0
+    }
+
+    #formula-input {
+      flex: 1;
+      height: 22px;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 0 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--txt);
+      outline: none;
+      caret-color: var(--teal);
+    }
+
+    #formula-input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 2px rgba(0, 255, 204, .08)
+    }
+
+    #fbar-result {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--teal2);
+      white-space: nowrap;
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    /* ══ GRID CONTAINER ══ */
+    #grid-wrap {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative
+    }
+
+    #grid-scroll {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+      cursor: cell
+    }
+
+    #rubber-band-sel {
+      position: absolute;
+      border: 1.5px dashed var(--blue);
+      background: rgba(74, 158, 255, .07);
+      border-radius: 1px;
+      display: none;
+      pointer-events: none;
+      z-index: 25
+    }
+
+    #sel-overlay {
+      position: absolute;
+      pointer-events: none;
+      z-index: 15;
+      border: 2px solid var(--teal);
+      background: rgba(0, 255, 204, .05);
+      border-radius: 1px;
+      display: none
+    }
+
+    #sel-handle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: var(--teal);
+      border: 1.5px solid var(--bg0);
+      border-radius: 1px;
+      cursor: crosshair;
+      z-index: 16;
+      display: none
+    }
+
+    #goto-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 16px 18px;
+      z-index: 800;
+      display: none;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, .6);
+      width: 260px;
+      animation: fadeIn .18s ease
+    }
+
+    #goto-modal.show {
+      display: block
+    }
+
+    body.sel-tool .cell {
+      cursor: crosshair !important
+    }
+
+    body.sel-tool #grid-scroll {
+      cursor: crosshair
+    }
+
+    #grid-inner {
+      display: inline-block;
+      position: relative
+    }
+
+    /* ══ GRID HEADERS ══ */
+    #col-headers {
+      display: flex;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--hbg);
+      border-bottom: 2px solid var(--border3);
+    }
+
+    .col-header-corner {
+      width: var(--hdr-w);
+      height: var(--hdr-h);
+      flex-shrink: 0;
+      background: var(--bg3);
+      border-right: 1px solid var(--border3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .col-header-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: var(--border3)
+    }
+
+    .col-hdr {
+      height: var(--hdr-h);
+      flex-shrink: 0;
+      background: var(--hbg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--htxt);
+      letter-spacing: .5px;
+      position: relative;
+      user-select: none;
+      transition: color var(--transition), background var(--transition);
+    }
+
+    .col-hdr:hover {
+      background: var(--bg3);
+      color: var(--txt2)
+    }
+
+    .col-hdr.active-col {
+      color: var(--teal) !important;
+      background: rgba(0, 255, 204, .06) !important
+    }
+
+    .col-resize-handle {
+      position: absolute;
+      right: -3px;
+      top: 0;
+      bottom: 0;
+      width: 6px;
+      cursor: col-resize;
+      z-index: 5;
+    }
+
+    .col-sort-indicator {
+      font-size: 8px;
+      margin-left: 3px;
+      color: var(--teal)
+    }
+
+    /* ══ GRID ROWS ══ */
+    .grid-row {
+      display: flex;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .row-hdr {
+      width: var(--hdr-w);
+      flex-shrink: 0;
+      height: var(--row-h);
+      background: var(--hbg);
+      border-right: 1px solid var(--border3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--htxt);
+      font-family: var(--font-mono);
+      position: sticky;
+      left: 0;
+      z-index: 20;
+      cursor: row-resize;
+      user-select: none;
+      transition: background var(--transition);
+    }
+
+    .row-hdr:hover {
+      background: var(--bg3)
+    }
+
+    .row-hdr.active-row {
+      color: var(--teal) !important;
+      background: rgba(0, 255, 204, .06) !important
+    }
+
+    /* ══ CELLS ══ */
+    .cell {
+      display: inline-flex;
+      align-items: center;
+      height: var(--row-h);
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--txt);
+      padding: 0 5px;
+      cursor: cell;
+      user-select: none;
+      position: relative;
+      transition: background var(--transition);
+      white-space: nowrap;
+    }
+
+    .cell:hover:not(.editing) {
+      background: rgba(255, 255, 255, .02)
+    }
+
+    .cell.selected {
+      background: var(--sel) !important;
+      color: var(--teal) !important
+    }
+
+    .cell.active {
+      box-shadow: inset 0 0 0 2px var(--teal) !important;
+      background: rgba(0, 255, 204, .08) !important;
+      z-index: 5
+    }
+
+    .cell.highlight {
+      background: rgba(255, 107, 53, .15) !important;
+      box-shadow: inset 0 0 0 1px var(--orange) !important
+    }
+
+    .cell-error {
+      color: var(--red) !important
+    }
+
+    .cell-input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--teal);
+      padding: 0 5px;
+      caret-color: var(--teal);
+      z-index: 10;
+    }
+
+    /* ══ BUTTONS ══ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 9px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      color: var(--txt2);
+      font-size: 11.5px;
+      font-family: var(--font-ui);
+      transition: all var(--transition);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn:hover {
+      background: var(--bg4);
+      border-color: var(--teal);
+      color: var(--teal)
+    }
+
+    .btn.active {
+      background: rgba(0, 255, 204, .12);
+      border-color: var(--teal);
+      color: var(--teal)
+    }
+
+    .btn.danger:hover {
+      border-color: var(--red);
+      color: var(--red)
+    }
+
+    .btn.primary {
+      background: rgba(0, 255, 204, .1);
+      border-color: var(--teal);
+      color: var(--teal)
+    }
+
+    .btn-icon {
+      padding: 4px 6px
+    }
+
+    select.sel {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--txt);
+      padding: 3px 6px;
+      font-size: 11.5px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    select.sel:focus {
+      border-color: var(--teal)
+    }
+
+    input.inp {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--txt);
+      padding: 4px 8px;
+      font-size: 12px;
+      outline: none;
+    }
+
+    input.inp:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 2px rgba(0, 255, 204, .08)
+    }
+
+    input[type=color] {
+      width: 22px;
+      height: 22px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      padding: 0
+    }
+
+    /* ══ TABS ══ */
+    #sheet-tabs {
+      height: var(--tabs-h);
+      display: flex;
+      align-items: flex-end;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 0 8px;
+      gap: 2px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      flex-shrink: 0;
+    }
+
+    #sheet-tabs::-webkit-scrollbar {
+      height: 0
+    }
+
+    .sheet-tab {
+      padding: 5px 14px;
+      border-radius: 6px 6px 0 0;
+      border: 1px solid var(--border2);
+      border-bottom: none;
+      font-size: 12px;
+      white-space: nowrap;
+      cursor: pointer;
+      background: var(--bg3);
+      color: var(--txt2);
+      transition: all var(--transition);
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .sheet-tab:hover {
+      background: var(--bg4)
+    }
+
+    .sheet-tab.active {
+      background: var(--bg0);
+      color: var(--teal);
+      font-weight: 700
+    }
+
+    .sheet-tab .tab-close {
+      font-size: 12px;
+      opacity: .4;
+      line-height: 1
+    }
+
+    .sheet-tab .tab-close:hover {
+      opacity: 1;
+      color: var(--red)
+    }
+
+    .tab-add-btn {
+      padding: 4px 8px;
+      background: none;
+      border: none;
+      color: var(--txt3);
+      font-size: 18px;
+      cursor: pointer;
+      margin-bottom: 2px;
+      line-height: 1
+    }
+
+    .tab-add-btn:hover {
+      color: var(--teal)
+    }
+
+    /* ══ STATUS BAR ══ */
+    #statusbar {
+      height: var(--status-h);
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      gap: 16px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .status-item {
+      font-size: 10px;
+      color: var(--txt2);
+      font-family: var(--font-mono);
+      white-space: nowrap
+    }
+
+    .status-item.highlight {
+      color: var(--teal2)
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 6px var(--teal)
+    }
+
+    /* ══ AI PANEL ══ */
+    #ai-panel {
+      width: var(--ai-w);
+      flex-shrink: 0;
+      background: var(--bg1);
+      border-left: 1px solid var(--border2);
+      display: flex;
+      flex-direction: column;
+      transition: transform var(--transition), width var(--transition);
+      overflow: hidden;
+    }
+
+    #ai-panel.hidden {
+      width: 0;
+      border-left: none
+    }
+
+    .ai-header {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .ai-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--txt3);
+      flex-shrink: 0;
+      transition: background .3s, box-shadow .3s;
+    }
+
+    .ai-status-dot.ready {
+      background: var(--teal);
+      box-shadow: 0 0 8px var(--teal)
+    }
+
+    .ai-status-dot.thinking {
+      background: var(--amber);
+      animation: pulse 1s infinite
+    }
+
+    .ai-title {
+      font-weight: 800;
+      font-size: 13px;
+      color: var(--teal);
+      letter-spacing: .5px;
+      flex: 1
+    }
+
+    .ai-model-badge {
+      font-size: 9px;
+      color: var(--txt2);
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      padding: 2px 6px;
+      border-radius: 99px
+    }
+
+    #ai-load-bar {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg1)
+    }
+
+    #ai-load-text {
+      font-size: 10px;
+      color: var(--teal2);
+      font-family: var(--font-mono);
+      margin-bottom: 5px;
+      animation: pulse 1.5s infinite
+    }
+
+    #ai-load-track {
+      height: 3px;
+      background: var(--bg3);
+      border-radius: 2px;
+      overflow: hidden
+    }
+
+    #ai-load-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--teal3), var(--teal));
+      border-radius: 2px;
+      transition: width .5s ease
+    }
+
+    #ai-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px
+    }
+
+    .ai-msg {
+      max-width: 92%;
+      padding: 9px 12px;
+      font-size: 12.5px;
+      line-height: 1.55;
+      border-radius: var(--radius2);
+      animation: fadeIn .2s ease;
+    }
+
+    .ai-msg.user {
+      align-self: flex-end;
+      background: rgba(0, 255, 204, .1);
+      border: 1px solid rgba(0, 255, 204, .25);
+      border-radius: 12px 12px 2px 12px;
+      color: var(--txt);
+    }
+
+    .ai-msg.assistant {
+      align-self: flex-start;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 2px 12px 12px 12px;
+      color: var(--txt);
+    }
+
+    .ai-msg.tool-result {
+      align-self: flex-start;
+      background: rgba(0, 255, 204, .06);
+      border: 1px solid rgba(0, 255, 204, .2);
+      border-radius: var(--radius);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--teal2);
+      width: 100%;
+    }
+
+    .ai-msg strong {
+      color: var(--teal)
+    }
+
+    .ai-msg code {
+      background: var(--bg2);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--amber)
+    }
+
+    #ai-chips {
+      padding: 5px 12px;
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border)
+    }
+
+    .ai-chip {
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 99px;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      color: var(--txt2);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+
+    .ai-chip:hover {
+      border-color: var(--teal);
+      color: var(--teal)
+    }
+
+    #ai-input-row {
+      padding: 9px 12px;
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+      display: flex;
+      gap: 7px;
+      flex-shrink: 0;
+    }
+
+    #ai-input {
+      flex: 1;
+      padding: 7px 10px;
+      background: var(--bg1);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      color: var(--txt);
+      font-size: 12px;
+      outline: none;
+      resize: none;
+      height: 36px;
+      font-family: var(--font-ui);
+    }
+
+    #ai-input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 2px rgba(0, 255, 204, .08)
+    }
+
+    #ai-send {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 255, 204, .1);
+      border: 1px solid var(--teal);
+      border-radius: var(--radius);
+      color: var(--teal);
+      flex-shrink: 0;
+    }
+
+    #ai-send:hover {
+      background: rgba(0, 255, 204, .2)
+    }
+
+    #ai-send:disabled {
+      opacity: .4;
+      cursor: not-allowed
+    }
+
+    /* ══ CHART PANEL ══ */
+    #chart-panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: rgba(3, 8, 16, .9);
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+
+    #chart-panel.show {
+      display: flex
+    }
+
+    #chart-dialog {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 20px;
+      width: min(520px, 95vw);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
+      animation: fadeIn .2s ease;
+    }
+
+    .chart-preview {
+      background: var(--bg1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+    }
+
+    /* ══ CONTEXT MENU ══ */
+    #ctx-menu {
+      position: fixed;
+      z-index: 900;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 4px 0;
+      min-width: 170px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .6);
+      display: none;
+      animation: fadeIn .15s ease;
+    }
+
+    #ctx-menu.show {
+      display: block
+    }
+
+    .ctx-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      color: var(--txt);
+      cursor: pointer;
+    }
+
+    .ctx-item:hover {
+      background: var(--bg3);
+      color: var(--teal)
+    }
+
+    .ctx-sep {
+      height: 1px;
+      background: var(--border);
+      margin: 3px 0
+    }
+
+    /* ══ MODALS ══ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 8, 16, .85);
+      z-index: 800;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(3px);
+    }
+
+    .modal-overlay.show {
+      display: flex
+    }
+
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 22px;
+      width: min(400px, 95vw);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .7);
+      animation: fadeIn .2s ease;
+    }
+
+    .modal-title {
+      font-weight: 800;
+      font-size: 15px;
+      color: var(--teal);
+      letter-spacing: .5px;
+      margin-bottom: 16px
+    }
+
+    /* ══ MOBILE TOOLBAR DRAWER ══ */
+    #mobile-drawer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 700;
+      background: var(--bg2);
+      border-top: 1px solid var(--border2);
+      padding: 14px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, .5);
+      transform: translateY(100%);
+      transition: transform .3s ease;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    #mobile-drawer.show {
+      display: flex;
+      transform: translateY(0)
+    }
+
+    #mobile-ai-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 600;
+      height: 65%;
+      background: var(--bg1);
+      border-top: 1px solid var(--border2);
+      border-radius: 16px 16px 0 0;
+      display: none;
+      flex-direction: column;
+      box-shadow: 0 -8px 32px rgba(0, 0, 0, .5);
+    }
+
+    #mobile-ai-panel.show {
+      display: flex
+    }
+
+    /* ══ ANIMATIONS ══ */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .4
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(16px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateX(0)
+      }
+    }
+
+    @keyframes glow {
+
+      0%,
+      100% {
+        box-shadow: 0 0 6px rgba(0, 255, 204, .4)
+      }
+
+      50% {
+        box-shadow: 0 0 14px rgba(0, 255, 204, .8)
+      }
+    }
+
+    /* ══ MOBILE RESPONSIVE ══ */
+    @media(max-width:768px) {
+      :root {
+        --ai-w: 0px;
+        --col-w: 80px;
+        --row-h: 32px;
+        --hdr-w: 36px;
+        --hdr-h: 32px;
+        --toolbar-h: 0px;
+        --fbar-h: 40px
+      }
+
+      #toolbar {
+        display: none
+      }
+
+      #ai-panel {
+        display: none !important
+      }
+
+      #mobile-bottom-bar {
+        display: flex !important
+      }
+
+      #titlebar {
+        height: 48px;
+        padding: 0 8px;
+        gap: 6px
+      }
+
+      .logo-text {
+        font-size: 13px
+      }
+
+      .logo-badge {
+        display: none
+      }
+
+      .titlebar-actions .btn:not(#ai-toggle):not(#mobile-fmt-btn) {
+        display: none
+      }
+
+      .cell {
+        height: var(--row-h);
+        font-size: 13px
+      }
+
+      .col-hdr {
+        height: var(--hdr-h);
+        font-size: 12px
+      }
+
+      .row-hdr {
+        height: var(--row-h);
+        font-size: 11px
+      }
+
+      #formula-input {
+        font-size: 14px;
+        height: 28px
+      }
+
+      #fbar {
+        height: var(--fbar-h);
+        padding: 0 8px;
+        gap: 5px
+      }
+
+      #cell-ref {
+        width: 52px;
+        font-size: 12px
+      }
+
+      #fbar-fx {
+        font-size: 18px
+      }
+
+      .modal {
+        padding: 16px;
+        width: calc(100vw - 24px);
+        max-height: 90vh;
+        overflow-y: auto
+      }
+
+      #chart-dialog {
+        padding: 14px;
+        width: calc(100vw - 16px)
+      }
+
+      .chart-preview {
+        min-height: 140px
+      }
+
+      #goto-modal {
+        width: calc(100vw - 40px)
+      }
+    }
+
+    #mobile-bottom-bar {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      z-index: 400;
+      background: var(--bg2);
+      border-top: 1px solid var(--border2);
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 4px;
+    }
+
+    .mob-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 4px 6px;
+      background: none;
+      border: none;
+      color: var(--txt2);
+      font-size: 9px;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all .15s;
+      -webkit-tap-highlight-color: transparent;
+      min-width: 44px;
+    }
+
+    .mob-btn:active,
+    .mob-btn.active {
+      color: var(--teal);
+      background: rgba(0, 255, 204, .08)
+    }
+
+    .mob-btn svg {
+      width: 22px;
+      height: 22px
+    }
+
+    @media(max-width:768px) {
+      #grid-wrap {
+        margin-bottom: 56px
+      }
+
+      #statusbar {
+        display: none
+      }
+
+      #sheet-tabs {
+        height: 32px
+      }
+
+      .sheet-tab {
+        padding: 5px 12px;
+        font-size: 12px
+      }
+
+      /* Larger touch targets for cells */
+      .cell {
+        min-height: 32px
+      }
+    }
+
+    /* ══ MOBILE TOUCH OPTIMIZATIONS ══ */
+    @media(max-width:768px) {
+      .btn {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-height: 36px
+      }
+
+      .sel {
+        padding: 6px 8px;
+        font-size: 12px;
+        min-height: 36px
+      }
+
+      .inp {
+        padding: 7px 10px;
+        font-size: 14px;
+        min-height: 40px
+      }
+
+      input[type=color] {
+        width: 30px;
+        height: 30px
+      }
+
+      /* Mobile drawer larger */
+      #mobile-drawer {
+        padding: 16px;
+        gap: 12px
+      }
+
+      #mobile-drawer .btn {
+        min-height: 44px;
+        font-size: 13px
+      }
+    }
+
+    /* ══ TOOLTIP ══ */
+    [data-tip] {
+      position: relative
+    }
+
+    [data-tip]:hover::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 5px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg4);
+      color: var(--txt);
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 999;
+      border: 1px solid var(--border2);
+    }
+
+    /* ══ SELECTION OVERLAY & RUBBER BAND ══ */
+    #sel-overlay {
+      position: absolute;
+      pointer-events: none;
+      z-index: 15;
+      border: 2px solid var(--teal);
+      background: rgba(0, 255, 204, .05);
+      border-radius: 1px;
+      display: none
+    }
+
+    #sel-handle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: var(--teal);
+      border: 1.5px solid var(--bg0);
+      border-radius: 1px;
+      cursor: crosshair;
+      z-index: 16;
+      display: none
+    }
+
+    #rubber-band-sel {
+      position: absolute;
+      border: 1.5px dashed var(--blue);
+      background: rgba(74, 158, 255, .07);
+      border-radius: 1px;
+      display: none;
+      pointer-events: none;
+      z-index: 25
+    }
+
+    body.sel-tool .cell {
+      cursor: crosshair !important
+    }
+
+    /* ══ GOTO MODAL ══ */
+    #goto-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 16px 18px;
+      z-index: 800;
+      display: none;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, .6);
+      width: 260px
+    }
+
+    #goto-modal.show {
+      display: block;
+      animation: fadeIn .18s ease
+    }
+
+    /* ══ CHART CATEGORIES ══ */
+    .ct-cat {
+      font-size: 9px;
+      color: var(--txt3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 4px 0 2px;
+      grid-column: 1/-1
+    }
+
+    .ctb-group {
+      display: contents
+    }
+
+    .chart-embed {
+      position: absolute;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .4);
+      cursor: move;
+      z-index: 100;
+      user-select: none;
+    }
+
+    .chart-embed .chart-title {
+      font-size: 11px;
+      color: var(--txt2);
+      margin-bottom: 8px;
+      font-weight: 600
+    }
+
+    .chart-embed .chart-close {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      background: none;
+      border: none;
+      color: var(--txt2);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 2px
+    }
+
+    .chart-embed .chart-close:hover {
+      color: var(--red)
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <!-- TITLE BAR -->
+    <div id="titlebar">
+      <div class="logo">
+        <div class="logo-icon">⬡</div>
+        <span class="logo-text">SheetCraft</span>
+        <span class="logo-badge">v3.0 · AI</span>
+      </div>
+      <div class="titlebar-actions">
+        <button class="btn" id="btn-new" data-tip="New Sheet">⊕ New</button>
+        <button class="btn" id="btn-import" data-tip="Import CSV/XLSX">↑ Import</button>
+        <input type="file" id="file-input" accept=".csv,.tsv,.xlsx,.xls" style="display:none">
+        <button class="btn" id="btn-export" data-tip="Export CSV">↓ CSV</button>
+        <button class="btn" id="btn-export-xlsx" data-tip="Export Excel XLSX">↓ XLSX</button>
+        <button class="btn" id="btn-export-json" data-tip="Export JSON">↓ JSON</button>
+        <button class="btn" id="btn-undo" data-tip="Undo (Ctrl+Z)">↩ Undo</button>
+        <button class="btn" id="btn-redo" data-tip="Redo (Ctrl+Y)">↪ Redo</button>
+        <button class="btn" id="btn-find" data-tip="Find & Replace (Ctrl+F)">⌕ Find</button>
+        <button class="btn" id="btn-chart" data-tip="Insert Chart">◫ Chart</button>
+        <button class="btn" id="btn-sort-asc" data-tip="Sort Ascending">↑ Sort</button>
+        <button class="btn" id="btn-sort-desc" data-tip="Sort Descending">↓ Sort</button>
+        <button class="btn" id="btn-sel-tool" title="Selection Tool — drag to rubber-band select (press S)">⊡
+          Select</button>
+        <button class="btn" id="btn-goto" title="Go To Range (Ctrl+G)">⊕ Go To</button>
+        <button class="btn" id="btn-freeze" data-tip="Freeze Panes">⊞ Freeze</button>
+        <select class="sel" id="zoom-sel" style="width:60px">
+          <option value="75">75%</option>
+          <option value="100" selected>100%</option>
+          <option value="125">125%</option>
+          <option value="150">150%</option>
+        </select>
+      </div>
+      <button class="btn primary" id="ai-toggle" style="flex-shrink:0;animation:glow 2s infinite">🤖 AI</button>
+      <button class="btn btn-icon" id="mobile-fmt-btn" style="display:none">✏</button>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div id="toolbar">
+      <select class="sel" id="font-size-sel" style="width:50px">
+        <option>8</option>
+        <option>9</option>
+        <option>10</option>
+        <option>11</option>
+        <option value="12" selected>12</option>
+        <option>13</option>
+        <option>14</option>
+        <option>16</option>
+        <option>18</option>
+        <option>20</option>
+        <option>24</option>
+        <option>28</option>
+      </select>
+      <div class="tb-sep"></div>
+      <button class="btn btn-icon" id="fmt-bold" data-tip="Bold"><b>B</b></button>
+      <button class="btn btn-icon" id="fmt-italic" data-tip="Italic"><i>I</i></button>
+      <button class="btn btn-icon" id="fmt-underline" data-tip="Underline"><u>U</u></button>
+      <div class="tb-sep"></div>
+      <button class="btn btn-icon" id="fmt-align-l" data-tip="Align Left">≡</button>
+      <button class="btn btn-icon" id="fmt-align-c" data-tip="Center">≡</button>
+      <button class="btn btn-icon" id="fmt-align-r" data-tip="Right">≡</button>
+      <div class="tb-sep"></div>
+      <label data-tip="Text Color"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--txt2);font-size:11px">A<input
+          type="color" id="fmt-color" value="#c2d8ee"></label>
+      <label data-tip="Cell Fill"
+        style="display:flex;align-items:center;gap:3px;cursor:pointer;color:var(--txt2);font-size:11px">▦<input
+          type="color" id="fmt-bg" value="#0b1220"></label>
+      <div class="tb-sep"></div>
+      <select class="sel" id="num-fmt-sel" style="width:100px">
+        <option value="general">General</option>
+        <option value="currency">$ Currency</option>
+        <option value="percent">% Percent</option>
+        <option value="comma">Comma</option>
+        <option value="fixed2">Fixed .00</option>
+        <option value="sci">Scientific</option>
+        <option value="date">Date</option>
+      </select>
+      <div class="tb-sep"></div>
+      <button class="btn btn-icon" id="fmt-wrap" data-tip="Wrap Text">↵</button>
+      <button class="btn btn-icon" id="fmt-merge" data-tip="Merge Cells">⊞</button>
+      <div class="tb-sep"></div>
+      <button class="btn btn-icon" id="btn-sum" data-tip="AutoSum (=SUM)">Σ</button>
+      <button class="btn btn-icon" id="btn-fill-down" data-tip="Fill Down (Ctrl+D)">⬇</button>
+      <button class="btn btn-icon" id="btn-fill-right" data-tip="Fill Right (Ctrl+R)">⬇</button>
+      <div class="tb-sep"></div>
+      <button class="btn btn-icon danger" id="btn-del-row" data-tip="Delete Row">✕R</button>
+      <button class="btn btn-icon danger" id="btn-del-col" data-tip="Delete Col">✕C</button>
+      <button class="btn btn-icon" id="btn-ins-row" data-tip="Insert Row">+R</button>
+      <button class="btn btn-icon" id="btn-ins-col" data-tip="Insert Col">+C</button>
+    </div>
+
+    <!-- FORMULA BAR -->
+    <div id="fbar">
+      <div id="cell-ref">A1</div>
+      <div id="fbar-sep"></div>
+      <span id="fbar-fx">ƒ</span>
+      <input id="formula-input" type="text" placeholder="Value or formula (=SUM, =IF, =VLOOKUP...)">
+      <span id="fbar-result"></span>
+    </div>
+
+    <!-- GRID + AI SIDE PANEL -->
+    <div id="grid-wrap">
+      <div id="grid-scroll">
+        <div id="grid-inner">
+          <div id="col-headers"></div>
+          <div id="grid-rows"></div>
+          <!-- SELECTION OVERLAY: shows active cell / range highlight border -->
+          <div id="sel-overlay"></div>
+          <div id="sel-handle"></div>
+          <!-- RUBBER-BAND selection drawn while dragging in Select Tool mode -->
+          <div id="rubber-band-sel"></div>
+        </div>
+      </div>
+
+      <!-- AI PANEL (desktop) -->
+      <div id="ai-panel" class="hidden">
+        <div class="ai-header">
+          <div class="ai-status-dot" id="ai-dot"></div>
+          <span class="ai-title">NEXA AI</span>
+          <span class="ai-model-badge">TinyLlama · WebLLM</span>
+          <button class="btn btn-icon" id="ai-close" style="padding:2px 5px">✕</button>
+        </div>
+        <div id="ai-load-bar" style="display:none">
+          <div id="ai-load-text">Initializing TinyLlama...</div>
+          <div id="ai-load-track">
+            <div id="ai-load-fill"></div>
+          </div>
+        </div>
+        <div id="ai-messages"></div>
+        <div id="ai-chips"></div>
+        <div id="ai-input-row">
+          <input id="ai-input" placeholder="Ask AI to analyze, write formulas, create charts..." maxlength="500">
+          <button id="ai-send">➤</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHEET TABS -->
+    <div id="sheet-tabs">
+      <button class="tab-add-btn" id="add-sheet">+</button>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div id="statusbar">
+      <span class="status-item" id="status-cell">A1</span>
+      <span class="status-item" id="status-sel"></span>
+      <span class="status-item highlight" id="status-sum"></span>
+      <span style="flex:1"></span>
+      <span class="status-item" id="status-mode">READY</span>
+      <div class="status-dot"></div>
+    </div>
+
+    <!-- MOBILE BOTTOM BAR -->
+    <div id="mobile-bottom-bar">
+      <button class="mob-btn" id="mob-formula" data-tip="Formula">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><text x="2" y="18" font-size="16"
+            fill="currentColor" stroke="none">ƒ</text></svg>
+        <span>Formula</span>
+      </button>
+      <button class="mob-btn" id="mob-format">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 6h16M4 12h10M4 18h6" />
+        </svg>
+        <span>Format</span>
+      </button>
+      <button class="mob-btn" id="mob-sel-tool">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="8" height="8" rx="1" />
+          <rect x="13" y="3" width="8" height="8" rx="1" opacity=".4" />
+          <rect x="3" y="13" width="8" height="8" rx="1" opacity=".4" />
+          <rect x="13" y="13" width="8" height="8" rx="1" opacity=".4" />
+        </svg>
+        <span>Select</span>
+      </button>
+      <button class="mob-btn" id="mob-chart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 17 9 11 13 15 21 7" />
+          <line x1="3" y1="21" x2="21" y2="21" />
+        </svg>
+        <span>Chart</span>
+      </button>
+      <button class="mob-btn" id="mob-ai">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="7" y="7" width="10" height="10" rx="2" />
+          <circle cx="9" cy="12" r="1" fill="currentColor" />
+          <circle cx="15" cy="12" r="1" fill="currentColor" />
+          <path d="M12 2v4M7 21h10" />
+        </svg>
+        <span>AI</span>
+      </button>
+      <button class="mob-btn" id="mob-more">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="5" cy="12" r="1" fill="currentColor" />
+          <circle cx="12" cy="12" r="1" fill="currentColor" />
+          <circle cx="19" cy="12" r="1" fill="currentColor" />
+        </svg>
+        <span>More</span>
+      </button>
+    </div>
+
+    <!-- MOBILE AI PANEL -->
+    <div id="mobile-ai-panel">
+      <div class="ai-header" style="border-radius:16px 16px 0 0">
+        <div class="ai-status-dot" id="ai-dot-mob"></div>
+        <span class="ai-title">NEXA AI</span>
+        <span class="ai-model-badge">TinyLlama · Local</span>
+        <button class="btn btn-icon" id="mob-ai-close" style="padding:2px 5px">✕</button>
+      </div>
+      <div id="ai-messages-mob"
+        style="flex:1;overflow-y:auto;padding:10px 12px;display:flex;flex-direction:column;gap:8px"></div>
+      <div id="ai-chips-mob"
+        style="padding:5px 12px;display:flex;gap:4px;flex-wrap:wrap;border-top:1px solid var(--border)"></div>
+      <div id="ai-input-row-mob"
+        style="padding:9px 12px;border-top:1px solid var(--border);background:var(--bg2);display:flex;gap:7px">
+        <input id="ai-input-mob" class="inp" style="flex:1;height:36px;font-size:13px" placeholder="Ask AI...">
+        <button id="ai-send-mob" class="btn primary"
+          style="height:36px;width:36px;padding:0;justify-content:center">➤</button>
+      </div>
+    </div>
+
+    <!-- MOBILE DRAWER (Format + Full Tools) -->
+    <div id="mobile-drawer">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-weight:700;color:var(--teal);font-size:14px">Format &amp; Tools</span>
+        <button class="btn btn-icon" id="drawer-close">✕</button>
+      </div>
+      <!-- Format Section -->
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Format
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn btn-icon" id="mob-bold" style="min-width:44px;font-size:15px"><b>B</b></button>
+        <button class="btn btn-icon" id="mob-italic" style="min-width:44px;font-size:15px"><i>I</i></button>
+        <button class="btn btn-icon" id="mob-underline" style="min-width:44px;font-size:15px"><u>U</u></button>
+        <button class="btn btn-icon" id="mob-align-l" style="min-width:44px">⟵</button>
+        <button class="btn btn-icon" id="mob-align-c" style="min-width:44px">⟺</button>
+        <button class="btn btn-icon" id="mob-align-r" style="min-width:44px">⟶</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2)">Size<select class="sel"
+            id="mob-font-size" style="width:65px">
+            <option>10</option>
+            <option>12</option>
+            <option selected>13</option>
+            <option>14</option>
+            <option>16</option>
+            <option>18</option>
+            <option>24</option>
+          </select></label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2)">Color<input type="color"
+            id="mob-color" value="#c2d8ee"></label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--txt2)">Fill<input type="color"
+            id="mob-bg" value="#0b1220"></label>
+      </div>
+      <select class="sel" id="mob-num-fmt" style="width:100%;margin-bottom:10px">
+        <option value="general">General</option>
+        <option value="currency">$ Currency</option>
+        <option value="percent">% Percent</option>
+        <option value="comma">Comma</option>
+        <option value="fixed2">Fixed .00</option>
+        <option value="sci">Scientific</option>
+        <option value="date">Date</option>
+      </select>
+      <!-- Data Section -->
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Data
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn" id="mob-sum" style="flex:1">Σ AutoSum</button>
+        <button class="btn" id="mob-sort-asc" style="flex:1">↑ Sort A→Z</button>
+        <button class="btn" id="mob-sort-desc" style="flex:1">↓ Sort Z→A</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn" id="mob-find" style="flex:1">⌕ Find</button>
+        <button class="btn" id="mob-goto2" style="flex:1">⊕ Go To</button>
+        <button class="btn" id="mob-freeze2" style="flex:1">⊞ Freeze</button>
+      </div>
+      <!-- Rows/Cols -->
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Rows
+        &amp; Columns</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn" id="mob-ins-row" style="flex:1">+Row ↑</button>
+        <button class="btn" id="mob-ins-col" style="flex:1">+Col ←</button>
+        <button class="btn danger" id="mob-del-row" style="flex:1">✕ Row</button>
+        <button class="btn danger" id="mob-del-col" style="flex:1">✕ Col</button>
+      </div>
+      <!-- Undo/Redo -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <button class="btn" id="mob-undo" style="flex:1">↩ Undo</button>
+        <button class="btn" id="mob-redo" style="flex:1">↪ Redo</button>
+      </div>
+      <!-- Import/Export -->
+      <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Import
+        / Export</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn" id="mob-import" style="flex:1">↑ Import</button>
+        <button class="btn" id="mob-export-csv" style="flex:1">↓ CSV</button>
+        <button class="btn primary" id="mob-export-xlsx" style="flex:1">↓ XLSX</button>
+      </div>
+    </div>
+
+    <!-- CHART PANEL -->
+    <div id="chart-panel">
+      <div id="chart-dialog">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <span style="font-weight:800;font-size:15px;color:var(--teal)">INSERT CHART</span>
+          <button class="btn btn-icon" id="chart-close">✕</button>
+        </div>
+        <!-- Chart type grid with categories -->
+        <div style="margin-bottom:14px">
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+            Basic</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            <button class="btn" id="ct-bar">▮▮▮ Bar</button>
+            <button class="btn" id="ct-line">↗ Line</button>
+            <button class="btn" id="ct-area">▲ Area</button>
+            <button class="btn" id="ct-pie">◕ Pie</button>
+            <button class="btn" id="ct-donut">◎ Donut</button>
+            <button class="btn" id="ct-scatter">⋯ Scatter</button>
+          </div>
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+            Advanced</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+            <button class="btn" id="ct-pareto">📊 Pareto</button>
+            <button class="btn" id="ct-waterfall">⊟ Waterfall</button>
+            <button class="btn" id="ct-radar">✦ Radar</button>
+            <button class="btn" id="ct-bubble">⊙ Bubble</button>
+            <button class="btn" id="ct-boxplot">⊡ Box Plot</button>
+            <button class="btn" id="ct-heatmap">▤ Heat Map</button>
+          </div>
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">AI
+            &amp; Multi</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn" id="ct-series">⊞ Multi-Series</button>
+            <button class="btn" id="ct-predict">🔮 Predictive</button>
+            <button class="btn" id="ct-hbar">▬ Horiz. Bar</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;color:var(--txt2);display:block;margin-bottom:5px">Data Range</label>
+            <input class="inp" id="chart-range-input" style="width:100%" placeholder="e.g. A1:D5">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--txt2);display:block;margin-bottom:5px">Chart Title</label>
+            <input class="inp" id="chart-title-input" style="width:100%" placeholder="My Chart">
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2)"><input type="checkbox"
+              id="chart-show-labels"> Show Values</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2)"><input type="checkbox"
+              id="chart-show-grid" checked> Grid Lines</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--txt2)">Forecast periods:
+            <input type="number" id="chart-forecast-pts" value="0" min="0" max="20"
+              style="width:46px;background:var(--bg2);border:1px solid var(--border);border-radius:3px;color:var(--txt);padding:2px 5px;font-size:11px;margin-left:4px"></label>
+        </div>
+        <div class="chart-preview" id="chart-preview-area">
+          <span style="color:var(--txt2);font-size:12px">Select range and type to preview</span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+          <button class="btn" id="chart-cancel">Cancel</button>
+          <button class="btn primary" id="chart-insert">Insert Chart</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIND & REPLACE -->
+    <div class="modal-overlay" id="find-modal">
+      <div class="modal">
+        <div class="modal-title">Find & Replace</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input class="inp" id="find-input" placeholder="Find..." style="width:100%">
+          <input class="inp" id="replace-input" placeholder="Replace with..." style="width:100%">
+          <div style="display:flex;gap:8px;align-items:center">
+            <span id="find-count" style="font-size:11px;color:var(--txt2);flex:1">0 found</span>
+            <button class="btn" id="find-prev">← Prev</button>
+            <button class="btn" id="find-next">Next →</button>
+            <button class="btn" id="find-replace-btn">Replace</button>
+            <button class="btn primary" id="find-replace-all">Replace All</button>
+          </div>
+          <button class="btn" id="find-close" style="align-self:flex-end">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GO TO RANGE MODAL -->
+    <div id="goto-modal">
+      <div style="font-size:12px;color:var(--teal);font-weight:700;margin-bottom:10px">⊕ Go To Range</div>
+      <input class="inp" id="goto-input" style="width:100%;margin-bottom:10px" placeholder="e.g. B5 or A1:D10">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" id="goto-close">Cancel</button>
+        <button class="btn primary" id="goto-go">Go</button>
+      </div>
+    </div>
+
+    <!-- CONTEXT MENU -->
+    <div id="ctx-menu">
+      <div class="ctx-item" id="ctx-copy">📋 Copy</div>
+      <div class="ctx-item" id="ctx-cut">✂ Cut</div>
+      <div class="ctx-item" id="ctx-paste">📌 Paste</div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" id="ctx-insert-row">+ Insert Row Above</div>
+      <div class="ctx-item" id="ctx-insert-col">+ Insert Column Left</div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" id="ctx-del-row">✕ Delete Row</div>
+      <div class="ctx-item" id="ctx-del-col">✕ Delete Column</div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" id="ctx-sort-asc">↑ Sort Ascending</div>
+      <div class="ctx-item" id="ctx-sort-desc">↓ Sort Descending</div>
+      <div class="ctx-sep"></div>
+      <div class="ctx-item" id="ctx-clear">🗑 Clear Contents</div>
+      <div class="ctx-item" id="ctx-chart">◫ Chart from selection</div>
+    </div>
+  </div>
+
+  <script type="module">
+    /* ═══════════════════════════════════════════════════════════════════
+       SheetCraft CORE ENGINE
+    ═══════════════════════════════════════════════════════════════════ */
+
+    // ── CONSTANTS ──────────────────────────────────────────────────────
+    const TOTAL_COLS = 26;
+    const TOTAL_ROWS = 200;
+    const COLS = Array.from({ length: TOTAL_COLS }, (_, i) => String.fromCharCode(65 + i));
+    const DEFAULT_COL_W = 108;
+    const DEFAULT_ROW_H = 26;
+    const VISIBLE_COLS = 18;
+    const VISIBLE_ROWS = 80;
+
+    function cid(col, row) { return `${col}${row}` }
+    function parseRef(ref) {
+      const m = String(ref).replace(/\$/g, '').match(/^([A-Z]+)(\d+)$/i);
+      if (!m) return null;
+      return { col: m[1].toUpperCase(), row: parseInt(m[2]) };
+    }
+
+    // ── FORMULA FUNCTIONS ──────────────────────────────────────────────
+    const FN = {
+      SUM: (a) => a.reduce((s, v) => s + (+v || 0), 0),
+      AVERAGE: (a) => { const n = a.filter(v => !isNaN(+v)); return n.length ? n.reduce((s, v) => s + (+v), 0) / n.length : 0 },
+      AVG: (a) => FN.AVERAGE(a),
+      COUNT: (a) => a.filter(v => !isNaN(+v) && v !== '').length,
+      COUNTA: (a) => a.filter(v => v !== '' && v !== null && v !== undefined).length,
+      COUNTBLANK: (a) => a.filter(v => v === '' || v === null || v === undefined).length,
+      MAX: (a) => { const n = a.map(v => +v).filter(v => !isNaN(v)); return n.length ? Math.max(...n) : 0 },
+      MIN: (a) => { const n = a.map(v => +v).filter(v => !isNaN(v)); return n.length ? Math.min(...n) : 0 },
+      ABS: ([x]) => Math.abs(+x || 0),
+      SQRT: ([x]) => Math.sqrt(Math.max(0, +x || 0)),
+      POWER: ([x, y]) => Math.pow(+x || 0, +y || 0),
+      ROUND: ([x, d = 0]) => parseFloat((+x || 0).toFixed(Math.max(0, +d || 0))),
+      ROUNDUP: ([x, d = 0]) => { const f = Math.pow(10, +d || 0); return Math.ceil((+x || 0) * f) / f },
+      ROUNDDOWN: ([x, d = 0]) => { const f = Math.pow(10, +d || 0); return Math.floor((+x || 0) * f) / f },
+      FLOOR: ([x, s = 1]) => Math.floor((+x || 0) / (+s || 1)) * (+s || 1),
+      CEILING: ([x, s = 1]) => Math.ceil((+x || 0) / (+s || 1)) * (+s || 1),
+      INT: ([x]) => Math.floor(+x || 0),
+      MOD: ([x, y]) => (+x || 0) % ((+y) || 1),
+      LN: ([x]) => Math.log(Math.max(+x || 1, 1e-300)),
+      LOG: ([x, b = 10]) => Math.log(Math.max(+x || 1, 1e-300)) / Math.log(+b || 10),
+      LOG10: ([x]) => Math.log10(Math.max(+x || 1, 1e-300)),
+      EXP: ([x]) => Math.exp(+x || 0),
+      PI: () => Math.PI,
+      SIN: ([x]) => Math.sin(+x || 0),
+      COS: ([x]) => Math.cos(+x || 0),
+      TAN: ([x]) => Math.tan(+x || 0),
+      ASIN: ([x]) => Math.asin(+x || 0),
+      ACOS: ([x]) => Math.acos(+x || 0),
+      ATAN: ([x]) => Math.atan(+x || 0),
+      ATAN2: ([y, x]) => Math.atan2(+y || 0, +x || 0),
+      RADIANS: ([x]) => (+x || 0) * Math.PI / 180,
+      DEGREES: ([x]) => (+x || 0) * 180 / Math.PI,
+      FACT: ([x]) => { let r = 1; for (let i = 2; i <= Math.abs(+x || 0); i++)r *= i; return r },
+      COMBIN: ([n, k]) => { const f = FN.FACT; return f([n]) / (f([k]) * f([n - k])) },
+      PRODUCT: (a) => a.reduce((p, v) => p * (+v || 1), 1),
+      SUMPRODUCT: (a) => { const half = a.length / 2; let s = 0; for (let i = 0; i < half; i++)s += (+a[i] || 0) * (+a[i + half] || 0); return s },
+      SUMSQ: (a) => a.reduce((s, v) => s + (+v || 0) ** 2, 0),
+      STDEV: (a) => { const n = a.map(v => +v).filter(v => !isNaN(v)); if (n.length < 2) return 0; const m = FN.AVERAGE(n); return Math.sqrt(n.reduce((s, v) => s + (v - m) ** 2, 0) / (n.length - 1)) },
+      VAR: (a) => { const sd = FN.STDEV(a); return sd * sd },
+      MEDIAN: (a) => { const s = [...a.map(v => +v).filter(v => !isNaN(v))].sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2 },
+      LARGE: (a, k) => { const nums = [...a.slice(0, -1).map(v => +v).filter(v => !isNaN(v))].sort((a, b) => b - a); return nums[(+a[a.length - 1] || 1) - 1] || 0 },
+      SMALL: (a, k) => { const nums = [...a.slice(0, -1).map(v => +v).filter(v => !isNaN(v))].sort((a, b) => a - b); return nums[(+a[a.length - 1] || 1) - 1] || 0 },
+      RANK: (a) => { const val = +a[0], nums = a.slice(1).map(v => +v).filter(v => !isNaN(v)).sort((a, b) => b - a); return nums.indexOf(val) + 1 || '#N/A' },
+      IF: ([c, t = '', f = '']) => (c && c !== '0' && c !== 'FALSE' && c !== false && c !== '') ? t : f,
+      IFS: (a) => { for (let i = 0; i < a.length - 1; i += 2)if (a[i] && a[i] !== '0' && a[i] !== 'FALSE') return a[i + 1]; return a[a.length - 1] || '' },
+      SWITCH: (a) => { const [expr, ...rest] = a; for (let i = 0; i < rest.length - 1; i += 2)if (String(expr) === String(rest[i])) return rest[i + 1]; return rest[rest.length - 1] || '' },
+      AND: (a) => a.every(v => v && v !== '0' && v !== 'FALSE' && v !== false),
+      OR: (a) => a.some(v => v && v !== '0' && v !== 'FALSE' && v !== false),
+      NOT: ([x]) => !(x && x !== '0' && x !== 'FALSE'),
+      XOR: (a) => a.filter(v => v && v !== '0' && v !== 'FALSE').length % 2 === 1,
+      TRUE: () => true, FALSE: () => false,
+      IFERROR: ([v, e = '']) => String(v).startsWith('#') ? e : v,
+      IFNA: ([v, e = '']) => v === '#N/A' ? e : v,
+      ISNUMBER: ([v]) => !isNaN(+v) && v !== '',
+      ISTEXT: ([v]) => isNaN(+v) || v === '',
+      ISBLANK: ([v]) => v === '' || v === null || v === undefined,
+      ISERROR: ([v]) => String(v).startsWith('#'),
+      LEN: ([s]) => String(s ?? '').length,
+      UPPER: ([s]) => String(s ?? '').toUpperCase(),
+      LOWER: ([s]) => String(s ?? '').toLowerCase(),
+      PROPER: ([s]) => String(s ?? '').replace(/\w\S*/g, w => w[0].toUpperCase() + w.slice(1).toLowerCase()),
+      TRIM: ([s]) => String(s ?? '').trim(),
+      CLEAN: ([s]) => String(s ?? '').replace(/[\x00-\x1F]/g, ''),
+      LEFT: ([s, n = 1]) => String(s ?? '').slice(0, Math.max(0, +n || 0)),
+      RIGHT: ([s, n = 1]) => { const st = String(s ?? ''); return st.slice(Math.max(0, st.length - (+n || 0))) },
+      MID: ([s, start = 1, len = 1]) => String(s ?? '').slice((+start || 1) - 1, (+start || 1) - 1 + (+len || 0)),
+      REPLACE: ([s, start, len, new_text]) => String(s ?? '').slice(0, (+start || 1) - 1) + String(new_text ?? '') + String(s ?? '').slice((+start || 1) - 1 + (+len || 0)),
+      SUBSTITUTE: ([s, find, rep, n]) => { const st = String(s ?? ''); if (n === undefined) return st.split(String(find ?? '')).join(String(rep ?? '')); let cnt = 0; return st.replace(new RegExp(String(find ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), m => ++cnt === +n ? rep : m) },
+      CONCAT: (a) => a.join(''),
+      CONCATENATE: (a) => a.join(''),
+      TEXTJOIN: (a) => { const [delim, ignore, ...vals] = a; return vals.filter(v => !ignore || v !== '').join(String(delim ?? '')) },
+      REPT: ([s, n]) => String(s ?? '').repeat(Math.max(0, Math.floor(+n || 0))),
+      EXACT: ([a, b]) => String(a ?? '') === String(b ?? ''),
+      FIND: ([find, within, start = 1]) => { const i = String(within ?? '').indexOf(String(find ?? ''), +start - 1); return i >= 0 ? i + 1 : '#VALUE' },
+      SEARCH: ([find, within, start = 1]) => { const i = String(within ?? '').toLowerCase().indexOf(String(find ?? '').toLowerCase(), +start - 1); return i >= 0 ? i + 1 : '#VALUE' },
+      T: ([v]) => isNaN(+v) || v === '' ? String(v ?? '') : '',
+      TEXT: ([v, fmt = '']) => { const n = +v; if (isNaN(n)) return String(v ?? ''); if (fmt.includes('%')) return (n * 100).toFixed(2) + '%'; if (fmt.includes('.00')) return n.toFixed(2); if (fmt.includes(',')) return n.toLocaleString(); return String(v) },
+      VALUE: ([s]) => { const n = +String(s).replace(/[$,%]/g, ''); return isNaN(n) ? '#VALUE' : n },
+      ASC: ([s]) => s, CHAR: ([n]) => String.fromCharCode(+n || 0), CODE: ([s]) => String(s ?? '').charCodeAt(0) || 0,
+      TODAY: () => new Date().toLocaleDateString(),
+      NOW: () => new Date().toLocaleString(),
+      YEAR: ([d]) => new Date(isNaN(+d) ? d : +d * 86400000).getFullYear(),
+      MONTH: ([d]) => new Date(isNaN(+d) ? d : +d * 86400000).getMonth() + 1,
+      DAY: ([d]) => new Date(isNaN(+d) ? d : +d * 86400000).getDate(),
+      HOUR: ([d]) => new Date(d).getHours(),
+      MINUTE: ([d]) => new Date(d).getMinutes(),
+      SECOND: ([d]) => new Date(d).getSeconds(),
+      DATE: ([y, m, d]) => new Date(+y, +m - 1, +d).toLocaleDateString(),
+      DATEDIF: ([s, e, unit]) => { const a = new Date(s), b = new Date(e); const diff = b - a; if (unit === 'D') return Math.floor(diff / 86400000); if (unit === 'M') return (b.getFullYear() - a.getFullYear()) * 12 + b.getMonth() - a.getMonth(); if (unit === 'Y') return b.getFullYear() - a.getFullYear(); return 0 },
+      WEEKDAY: ([d, t = 1]) => { const day = new Date(isNaN(+d) ? d : +d).getDay(); return t === 2 ? (day + 6) % 7 + 1 : day + 1 },
+      NETWORKDAYS: ([s, e]) => { let a = new Date(s), b = new Date(e), c = 0; while (a <= b) { const d = a.getDay(); if (d !== 0 && d !== 6) c++; a.setDate(a.getDate() + 1); } return c },
+      RAND: () => Math.random(),
+      RANDBETWEEN: ([lo, hi]) => Math.floor(Math.random() * (+hi - +lo + 1)) + (+lo || 0),
+      VLOOKUP: (a) => {/* simplified */ return '#N/A' },
+      HLOOKUP: (a) => { return '#N/A' },
+      INDEX: (a) => { return a[0] || '' },
+      MATCH: (a) => { return '#N/A' },
+      CHOOSE: (a) => { const idx = +a[0] - 1; return a[idx + 1] ?? '#VALUE' },
+      OFFSET: (a) => a[0],
+      INDIRECT: (a) => a[0],
+      HYPERLINK: ([url, text]) => text || url,
+      SUMIF: (a) => {/* col, crit, sumcol */ return 0 },
+      COUNTIF: (a) => { return 0 },
+      AVERAGEIF: (a) => { return 0 },
+      PMT: ([rate, nper, pv]) => { const r = +rate; if (r === 0) return -(+pv) / (+nper); return r * (+pv) * Math.pow(1 + r, +nper) / (1 - Math.pow(1 + r, +nper)) },
+      FV: ([rate, nper, pmt, pv = 0]) => { const r = +rate; if (r === 0) return -(+pmt) * (+nper) - (+pv); return -(+pmt) * (Math.pow(1 + r, +nper) - 1) / r - (+pv) * Math.pow(1 + r, +nper) },
+      PV: ([rate, nper, pmt, fv = 0]) => { const r = +rate; if (r === 0) return -(+pmt) * (+nper) - (+fv); return (-(+pmt) * (1 - Math.pow(1 + r, -+nper)) / r - (+fv) * Math.pow(1 + r, -+nper)) },
+      RATE: ([nper, pmt, pv]) => { let r = 0.1; for (let i = 0; i < 100; i++) { const f = (1 + r) ** +nper; r -= (+pv + (+pmt) * (1 - f) / r + 0) / (+nper * (+pmt) / r - (+pmt) * (1 - f) / r ** 2 + 0); } return isNaN(r) ? '#NUM' : r },
+      NPV: (a) => { const r = +a[0]; return a.slice(1).reduce((s, v, i) => s + (+v) / Math.pow(1 + r, i + 1), 0) },
+      IRR: (a) => { let r = 0.1; for (let i = 0; i < 100; i++) { const npv = a.reduce((s, v, j) => s + (+v) / Math.pow(1 + r, j), 0); const dnpv = a.reduce((s, v, j) => s - j * (+v) / Math.pow(1 + r, j + 1), 0); r -= npv / dnpv; } return isNaN(r) ? '#NUM' : r },
+      MAX_VAL: (a) => FN.MAX(a), MIN_VAL: (a) => FN.MIN(a),
+    };
+
+    // ── FORMULA EVALUATOR ──────────────────────────────────────────────
+    function evalFormula(raw, getCellVal, depth = 0) {
+      if (depth > 50) return '#CIRC';
+      if (!raw || !String(raw).startsWith('=')) return raw ?? '';
+      const expr = String(raw).slice(1);
+
+      const resolve = (key) => {
+        const v = getCellVal(key.toUpperCase());
+        if (v === null || v === undefined || v === '') return 0;
+        if (String(v).startsWith('=')) return evalFormula(v, getCellVal, depth + 1);
+        return isNaN(+v) || v === '' ? v : +v;
+      };
+
+      const expandRange = (r1, r2) => {
+        const a = parseRef(r1), b = parseRef(r2);
+        if (!a || !b) return [];
+        const c1 = COLS.indexOf(a.col), c2 = COLS.indexOf(b.col);
+        const rr1 = Math.min(a.row, b.row), rr2 = Math.max(a.row, b.row);
+        const out = [];
+        for (let r = rr1; r <= rr2; r++)
+          for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++)
+            out.push(resolve(cid(COLS[c], r)));
+        return out;
+      };
+
+      const parseArgs = (rawArgs) => {
+        const args = []; let d = 0, cur = '';
+        for (const ch of rawArgs) {
+          if (ch === '(') d++; else if (ch === ')') d--;
+          if (ch === ',' && d === 0) { args.push(cur.trim()); cur = ''; } else cur += ch;
+        }
+        if (cur.trim()) args.push(cur.trim());
+        return args;
+      };
+
+      const evalExpr = (e) => {
+        e = e.trim();
+        if (e === '') return '';
+        if (/^TRUE$/i.test(e)) return true;
+        if (/^FALSE$/i.test(e)) return false;
+        if (/^".*"$/.test(e)) return e.slice(1, -1);
+        // Range
+        const rangeM = e.match(/^\$?([A-Z]+)\$?(\d+):\$?([A-Z]+)\$?(\d+)$/i);
+        if (rangeM) return expandRange(rangeM[1] + rangeM[2], rangeM[3] + rangeM[4]);
+        // Cell ref
+        if (/^\$?[A-Z]+\$?\d+$/i.test(e)) return resolve(e.replace(/\$/g, ''));
+        // Function
+        const fnM = e.match(/^([A-Z_][A-Z0-9_]*)\(([\s\S]*)\)$/i);
+        if (fnM) {
+          const fn = FN[fnM[1].toUpperCase()];
+          if (!fn) return `#NAME:${fnM[1]}`;
+          const rawArgs = parseArgs(fnM[2]);
+          const resolved = rawArgs.map(a => {
+            const rm = a.match(/^\$?([A-Z]+)\$?(\d+):\$?([A-Z]+)\$?(\d+)$/i);
+            if (rm) return expandRange(rm[1] + rm[2], rm[3] + rm[4]);
+            return evalExpr(a);
+          }).flat();
+          try { const r = fn(resolved); return r; } catch { return '#ERR'; }
+        }
+        // Number
+        if (!isNaN(+e) && e !== '') return +e;
+        // Expression: replace cells & ranges then eval
+        let safe = e;
+        // Replace ranges
+        safe = safe.replace(/\$?([A-Z]+)\$?(\d+):\$?([A-Z]+)\$?(\d+)/gi, (m, c1, r1, c2, r2) => {
+          const vals = expandRange(c1 + r1, c2 + r2);
+          return JSON.stringify(vals);
+        });
+        // Replace functions (nested-safe via repeated pass)
+        for (let pass = 0; pass < 6; pass++) {
+          safe = safe.replace(/([A-Z_][A-Z0-9_]*)\(([^()]*)\)/gi, (m, name, rawA) => {
+            const fn = FN[name.toUpperCase()];
+            if (!fn) return `"#NAME:${name}"`;
+            const args = parseArgs(rawA).map(a => {
+              try { return JSON.parse(a); } catch { return evalExpr(a); }
+            }).flat();
+            try { const r = fn(args); return typeof r === 'string' ? JSON.stringify(r) : String(r ?? 0); } catch { return '0'; }
+          });
+        }
+        // Replace cell refs
+        safe = safe.replace(/\$?([A-Z]+)\$?(\d+)/gi, (m, col, row) => {
+          const v = resolve(cid(col.toUpperCase(), parseInt(row)));
+          return typeof v === 'string' ? JSON.stringify(v) : String(v ?? 0);
+        });
+        safe = safe.replace(/\bAND\b/gi, '&&').replace(/\bOR\b/gi, '||').replace(/\bNOT\b/gi, '!');
+        safe = safe.replace(/\bTRUE\b/gi, 'true').replace(/\bFALSE\b/gi, 'false');
+        try {
+          // eslint-disable-next-line no-new-func
+          const result = new Function('"use strict";return (' + safe + ')')();
+          if (result === null || result === undefined) return '';
+          if (typeof result === 'boolean') return result ? 'TRUE' : 'FALSE';
+          if (Array.isArray(result)) return FN.SUM(result);
+          return String(result);
+        } catch { return '#EVAL'; }
+      };
+
+      try {
+        const r = evalExpr(expr);
+        if (r === null || r === undefined) return '';
+        if (typeof r === 'boolean') return r ? 'TRUE' : 'FALSE';
+        if (Array.isArray(r)) return String(FN.SUM(r));
+        return String(r);
+      } catch { return '#ERR'; }
+    }
+
+    // ── NUMBER FORMATTING ──────────────────────────────────────────────
+    function applyNumFmt(raw, fmt) {
+      if (!fmt || fmt === 'general') return raw;
+      const n = +raw; if (isNaN(n)) return raw;
+      if (fmt === 'currency') return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+      if (fmt === 'percent') return (n * 100).toFixed(2) + '%';
+      if (fmt === 'comma') return n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      if (fmt === 'fixed2') return n.toFixed(2);
+      if (fmt === 'sci') return n.toExponential(3);
+      if (fmt === 'date') return isNaN(n) ? raw : new Date(n).toLocaleDateString();
+      return raw;
+    }
+
+    // ── STATE ──────────────────────────────────────────────────────────
+    const state = {
+      sheets: [createSheet('Sheet1')],
+      activeSheet: 0,
+      selected: { col: 'A', row: 1 },
+      selRange: null,       // {start:{col,row},end:{col,row}}
+      editKey: null,
+      history: [], future: [],
+      clipboard: null,
+      zoom: 100,
+      frozen: { rows: 0, cols: 0 },
+      sortConfig: null,
+      charts: [],
+      highlight: [],
+      editMode: false,
+      colWidths: {}, rowHeights: {},
+    };
+
+    function createSheet(name) {
+      return {
+        name,
+        cells: {
+          A1: { v: 'Product', f: { bold: 1, bg: '#0d1e35', color: '#00ffcc' } },
+          B1: { v: 'Q1 Sales', f: { bold: 1, bg: '#0d1e35', color: '#00ffcc' } },
+          C1: { v: 'Q2 Sales', f: { bold: 1, bg: '#0d1e35', color: '#00ffcc' } },
+          D1: { v: 'Q3 Sales', f: { bold: 1, bg: '#0d1e35', color: '#00ffcc' } },
+          E1: { v: 'Q4 Sales', f: { bold: 1, bg: '#0d1e35', color: '#00ffcc' } },
+          F1: { v: 'Annual Total', f: { bold: 1, bg: '#0d1e35', color: '#f5c518' } },
+          G1: { v: 'Growth %', f: { bold: 1, bg: '#0d1e35', color: '#ff6b35' } },
+          A2: { v: 'NexaCorp' }, B2: { v: '48200' }, C2: { v: '52400' }, D2: { v: '61100' }, E2: { v: '73800' },
+          F2: { v: '=SUM(B2:E2)' }, G2: { v: '=ROUND((E2-B2)/B2*100,1)' },
+          A3: { v: 'DataVault' }, B3: { v: '31500' }, C3: { v: '38200' }, D3: { v: '44600' }, E3: { v: '55300' },
+          F3: { v: '=SUM(B3:E3)' }, G3: { v: '=ROUND((E3-B3)/B3*100,1)' },
+          A4: { v: 'SkyBridge' }, B4: { v: '22800' }, C4: { v: '27100' }, D4: { v: '33400' }, E4: { v: '41200' },
+          F4: { v: '=SUM(B4:E4)' }, G4: { v: '=ROUND((E4-B4)/B4*100,1)' },
+          A5: { v: 'OmniFlux' }, B5: { v: '56700' }, C5: { v: '62300' }, D5: { v: '70100' }, E5: { v: '84500' },
+          F5: { v: '=SUM(B5:E5)' }, G5: { v: '=ROUND((E5-B5)/B5*100,1)' },
+          A6: { v: 'PulseTech' }, B6: { v: '19400' }, C6: { v: '24300' }, D6: { v: '31200' }, E6: { v: '42800' },
+          F6: { v: '=SUM(B6:E6)' }, G6: { v: '=ROUND((E6-B6)/B6*100,1)' },
+          A7: { v: 'TOTAL', f: { bold: 1 } },
+          B7: { v: '=SUM(B2:B6)' }, C7: { v: '=SUM(C2:C6)' }, D7: { v: '=SUM(D2:D6)' }, E7: { v: '=SUM(E2:E6)' },
+          F7: { v: '=SUM(F2:F6)', f: { bold: 1, color: '#00ffcc' } },
+          G7: { v: '=ROUND(AVERAGE(G2:G6),1)', f: { bold: 1 } },
+          A9: { v: 'Stats', f: { bold: 1, color: '#b48aff' } },
+          A10: { v: 'Average Q1' }, B10: { v: '=AVERAGE(B2:B6)' },
+          A11: { v: 'Max Sale' }, B11: { v: '=MAX(B2:E6)' },
+          A12: { v: 'Min Sale' }, B12: { v: '=MIN(B2:E6)' },
+          A13: { v: 'Std Dev' }, B13: { v: '=STDEV(B2:E6)' },
+          A14: { v: 'Count' }, B14: { v: '=COUNT(B2:E6)' },
+        },
+        colWidths: { A: 110, B: 95, C: 95, D: 95, E: 95, F: 110, G: 85 },
+        rowHeights: {},
+      };
+    }
+
+    function getSheet() { return state.sheets[state.activeSheet] }
+    function getCellObj(key, s) { return (s || getSheet()).cells[key] || { v: '' } }
+    function getRawVal(key, s) { return getCellObj(key, s).v ?? '' }
+    function getDisplayVal(key, s) {
+      const sh = s || getSheet();
+      const raw = getRawVal(key, sh);
+      if (!raw && raw !== 0) return '';
+      const sr = String(raw);
+      if (sr.startsWith('=')) {
+        const result = evalFormula(raw, (k) => getRawVal(k, sh));
+        const fmt = getCellObj(key, sh).f?.numFmt;
+        return applyNumFmt(result, fmt);
+      }
+      return applyNumFmt(String(raw), getCellObj(key, sh).f?.numFmt);
+    }
+    function getCellFmt(key, s) { return getCellObj(key, s).f || {} }
+
+    function selectedKey() { return cid(state.selected.col, state.selected.row) }
+
+    function getSelectionKeys() {
+      if (!state.selRange) return [selectedKey()];
+      const { start, end } = state.selRange;
+      const c1 = COLS.indexOf(start.col), c2 = COLS.indexOf(end.col);
+      const r1 = Math.min(start.row, end.row), r2 = Math.max(start.row, end.row);
+      const out = [];
+      for (let r = r1; r <= r2; r++)
+        for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++)
+          out.push(cid(COLS[c], r));
+      return out;
+    }
+
+    function saveHistory() {
+      state.history.push(JSON.stringify(getSheet().cells));
+      if (state.history.length > 60) state.history.shift();
+      state.future = [];
+    }
+
+    function setCell(key, value, fmt, sheetIdx) {
+      const idx = sheetIdx ?? state.activeSheet;
+      const sh = state.sheets[idx];
+      if (!sh) return;
+      if (!sh.cells[key]) sh.cells[key] = { v: '' };
+      if (value !== undefined) sh.cells[key].v = value;
+      if (fmt) {
+        sh.cells[key].f = sh.cells[key].f || {};
+        Object.assign(sh.cells[key].f, fmt);
+      }
+    }
+
+    function applyFmtToSelection(fmtPatch) {
+      saveHistory();
+      getSelectionKeys().forEach(k => setCell(k, undefined, fmtPatch));
+      renderGrid(); updateStatusBar();
+    }
+
+    // ── CHART ENGINE ───────────────────────────────────────────────────
+    const COLORS = ['#00ffcc', '#f5c518', '#ff6b35', '#b48aff', '#4a9eff', '#ff4466', '#34d399', '#fb923c'];
+
+    function parseRangeForChart(rangeStr, sheet) {
+      const sh = sheet || getSheet();
+      const m = rangeStr.replace(/\s/g, '').match(/^([A-Z]+\d+):([A-Z]+\d+)$/i);
+      if (!m) return { values: [], labels: [], series: [] };
+      const a = parseRef(m[1]), b = parseRef(m[2]); if (!a || !b) return { values: [], labels: [], series: [] };
+      const c1 = COLS.indexOf(a.col), c2 = COLS.indexOf(b.col), r1 = Math.min(a.row, b.row), r2 = Math.max(a.row, b.row);
+      const labels = [], series = [];
+      const firstColIsLabel = c2 > c1 && isNaN(parseFloat(getDisplayVal(cid(COLS[c1], r1 + 1), sh)));
+      const dc = firstColIsLabel ? c1 + 1 : c1;
+      if (firstColIsLabel) for (let r = r1 + 1; r <= r2; r++)labels.push(getDisplayVal(cid(COLS[c1], r), sh) || `R${r}`);
+      for (let c = dc; c <= c2; c++) {
+        const hdr = getDisplayVal(cid(COLS[c], r1), sh) || COLS[c];
+        const data = [];
+        for (let r = r1 + (dc === c1 ? 0 : 1); r <= r2; r++) { const v = parseFloat(getDisplayVal(cid(COLS[c], r), sh)); if (!isNaN(v)) data.push(v); }
+        if (data.length) series.push({ label: String(hdr), data });
+      }
+      if (!labels.length && series[0]) series[0].data.forEach((_, i) => labels.push(`#${i + 1}`));
+      return { values: series[0]?.data || [], labels, series };
+    }
+
+    const CHART_COLORS = ['#00ffcc', '#f5c518', '#ff6b35', '#b48aff', '#4a9eff', '#ff4466', '#34d399', '#fb923c', '#60a5fa', '#e879f9'];
+
+    function buildChart(values, labels, type, title, opts, w, h, extraSeries) {
+      if (opts === undefined) opts = {};
+      if (w === undefined) w = 460;
+      if (h === undefined) h = 240;
+      if (extraSeries === undefined) extraSeries = [];
+      const pad = 38, titleH = title ? 22 : 0;
+      const W = w, H = h;
+      const chartW = W - pad - 18, chartH = H - pad - titleH - 14;
+      const ox = pad, oy = titleH + 10;
+      const allSeries = extraSeries.length ? extraSeries : [{ label: '', data: values }];
+      const allNums = allSeries.flatMap(function (s) { return s.data || []; });
+      const nums = (values || []).map(function (v) { return +v || 0; });
+      const maxV = Math.max.apply(null, allNums.concat([0.001]));
+      const minV = Math.min.apply(null, [0].concat(allNums));
+      const rng = maxV - minV || 1;
+      const showGrid = opts.grid !== false;
+      const showLbl = opts.labels;
+      const fpPts = Math.max(0, +(opts.forecast || 0));
+      const C = CHART_COLORS;
+      function toY(v) { return oy + chartH - ((v - minV) / rng) * (chartH - pad); }
+      function gx() { if (!showGrid) return ''; var g = ''; for (var i = 0; i <= 4; i++) { var y = oy + pad + (1 - i / 4) * (chartH - pad); g += '<line x1="' + ox + '" y1="' + y.toFixed(1) + '" x2="' + (ox + chartW) + '" y2="' + y.toFixed(1) + '" stroke="#0d1d30" stroke-width="1"/>'; g += '<text x="' + (ox - 4) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end" font-size="8" fill="#264055">' + (minV + rng * i / 4).toFixed(0) + '</text>'; } return g; }
+      function ax() { return '<line x1="' + ox + '" y1="' + oy + '" x2="' + ox + '" y2="' + (oy + chartH) + '" stroke="#193045" stroke-width="1"/><line x1="' + ox + '" y1="' + (oy + chartH) + '" x2="' + (ox + chartW) + '" y2="' + (oy + chartH) + '" stroke="#193045" stroke-width="1"/>'; }
+      var defs = '<defs>' + C.map(function (c, i) { return '<linearGradient id="cg' + i + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="' + c + '" stop-opacity=".88"/><stop offset="100%" stop-color="' + c + '" stop-opacity=".3"/></linearGradient>'; }).join('') + '</defs>';
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + defs;
+      svg += '<rect width="' + W + '" height="' + H + '" fill="#060c18" rx="8"/>';
+      if (title) svg += '<text x="' + (W / 2) + '" y="' + (titleH - 3) + '" text-anchor="middle" font-family="Syne,sans-serif" font-size="12" font-weight="700" fill="#00ffcc">' + escHtml(title) + '</text>';
+
+      if (type === 'bar' || type === 'series') {
+        svg += gx(); svg += ax();
+        var grpW = chartW / Math.max(allSeries[0].data.length, 1);
+        var sw = grpW * 0.82 / Math.max(allSeries.length, 1);
+        allSeries.forEach(function (s, si) {
+          (s.data || []).forEach(function (v, i) {
+            var bh = Math.max(2, ((v - minV) / rng) * (chartH - pad));
+            var x = ox + i * grpW + grpW * 0.09 + si * sw, y = toY(v);
+            svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + sw.toFixed(1) + '" height="' + bh.toFixed(1) + '" fill="url(#cg' + si % C.length + ')" rx="2"/>';
+            if (showLbl && bh > 14) svg += '<text x="' + (x + sw / 2).toFixed(1) + '" y="' + (y + bh / 2 + 4).toFixed(1) + '" text-anchor="middle" font-size="8" fill="white">' + v.toFixed(0) + '</text>';
+            if (si === 0) svg += '<text x="' + (ox + i * grpW + grpW / 2).toFixed(1) + '" y="' + (oy + chartH + 11).toFixed(1) + '" text-anchor="middle" font-size="8.5" fill="#264055">' + escHtml(String(labels[i] || '').slice(0, 9)) + '</text>';
+          });
+        });
+        if (allSeries.length > 1) allSeries.forEach(function (s, i) { svg += '<rect x="' + (ox + i * 72) + '" y="' + (oy + chartH + 14) + '" width="9" height="9" fill="' + C[i % C.length] + '" rx="2"/><text x="' + (ox + i * 72 + 12) + '" y="' + (oy + chartH + 23) + '" font-size="8.5" fill="#bdd5ed">' + escHtml(s.label) + '</text>'; });
+      }
+      else if (type === 'hbar') {
+        svg += '<line x1="' + ox + '" y1="' + oy + '" x2="' + ox + '" y2="' + (oy + chartH) + '" stroke="#193045"/>';
+        var n2 = nums.length, bh2 = Math.min((chartH - pad) / Math.max(n2, 1), 28), gap = 4;
+        nums.forEach(function (v, i) {
+          var bw = ((v - minV) / rng) * chartW, y = oy + pad / 2 + i * (bh2 + gap);
+          svg += '<rect x="' + ox + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + bh2.toFixed(1) + '" fill="url(#cg' + i % C.length + ')" rx="2"/>';
+          svg += '<text x="' + (ox - 4).toFixed(1) + '" y="' + (y + bh2 / 2 + 4).toFixed(1) + '" text-anchor="end" font-size="8.5" fill="#264055">' + escHtml(String(labels[i] || '').slice(0, 10)) + '</text>';
+          if (showLbl) svg += '<text x="' + (ox + bw + 3).toFixed(1) + '" y="' + (y + bh2 / 2 + 4).toFixed(1) + '" font-size="8" fill="' + C[i % C.length] + '">' + v.toFixed(0) + '</text>';
+        });
+      }
+      else if (type === 'line' || type === 'area') {
+        svg += gx(); svg += ax();
+        allSeries.forEach(function (s, si) {
+          var sd = s.data || []; var col = C[si % C.length];
+          var pts = sd.map(function (v, i) { return [ox + i * (chartW / Math.max(sd.length - 1, 1)), toY(v)]; });
+          var D = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+          if (type === 'area' && pts.length > 1) svg += '<path d="' + D + ' L' + pts[pts.length - 1][0].toFixed(1) + ',' + (oy + chartH) + ' L' + pts[0][0].toFixed(1) + ',' + (oy + chartH) + ' Z" fill="' + col + '" fill-opacity=".13"/>';
+          svg += '<path d="' + D + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+          pts.forEach(function (p, i) {
+            svg += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="' + col + '"/>';
+            if (si === 0 && sd.length <= 16) svg += '<text x="' + p[0].toFixed(1) + '" y="' + (oy + chartH + 11).toFixed(1) + '" text-anchor="middle" font-size="8" fill="#264055">' + escHtml(String(labels[i] || '').slice(0, 8)) + '</text>';
+          });
+        });
+        if (allSeries.length > 1) allSeries.forEach(function (s, i) { svg += '<rect x="' + (ox + i * 70) + '" y="' + (oy + chartH + 14) + '" width="9" height="9" fill="' + C[i % C.length] + '" rx="2"/><text x="' + (ox + i * 70 + 12) + '" y="' + (oy + chartH + 23) + '" font-size="8.5" fill="#bdd5ed">' + escHtml(s.label) + '</text>'; });
+      }
+      else if (type === 'pie' || type === 'donut') {
+        var total = nums.reduce(function (a, b) { return a + Math.abs(b); }, 0) || 1;
+        var cx = W / 2, cy = H / 2, r = Math.min(W, H) / 2 - 28, ir = type === 'donut' ? r * 0.55 : 0;
+        var angle = -Math.PI / 2;
+        nums.forEach(function (v, i) {
+          var frac = Math.abs(v) / total, slice = frac * 2 * Math.PI;
+          var x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle), x2 = cx + r * Math.cos(angle + slice), y2 = cy + r * Math.sin(angle + slice);
+          svg += '<path d="M' + cx + ',' + cy + ' L' + x1.toFixed(2) + ',' + y1.toFixed(2) + ' A' + r + ',' + r + ' 0 ' + (frac > 0.5 ? 1 : 0) + ',1 ' + x2.toFixed(2) + ',' + y2.toFixed(2) + ' Z" fill="' + C[i % C.length] + '" opacity=".87" stroke="#060c18" stroke-width="1.5"/>';
+          if (ir) svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + ir + '" fill="#060c18"/>';
+          var mx = cx + (r * 0.72) * Math.cos(angle + slice / 2), my = cy + (r * 0.72) * Math.sin(angle + slice / 2);
+          if (frac > 0.05) svg += '<text x="' + mx.toFixed(1) + '" y="' + (my + 4).toFixed(1) + '" text-anchor="middle" font-size="9" fill="white" font-weight="600">' + (frac * 100).toFixed(0) + '%</text>';
+          angle += slice;
+        });
+        nums.forEach(function (v, i) { svg += '<rect x="6" y="' + (6 + i * 14) + '" width="9" height="9" fill="' + C[i % C.length] + '" rx="2"/><text x="18" y="' + (14 + i * 14) + '" font-size="8.5" fill="#bdd5ed">' + escHtml(String(labels[i] || '').slice(0, 16)) + '</text>'; });
+        if (type === 'donut') svg += '<text x="' + cx + '" y="' + (cy + 5) + '" text-anchor="middle" font-size="14" font-weight="700" fill="#00ffcc">' + nums.reduce(function (a, b) { return a + b; }, 0).toLocaleString() + '</text>';
+      }
+      else if (type === 'scatter') {
+        svg += gx(); svg += ax();
+        allSeries.forEach(function (s, si) { (s.data || []).forEach(function (v, i) { var x = ox + (i / (Math.max((s.data || []).length - 1, 1))) * chartW, y = toY(v); svg += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="4" fill="' + C[si % C.length] + '" opacity=".8"/>'; }); });
+      }
+      else if (type === 'pareto') {
+        svg += gx(); svg += ax();
+        var pairs = nums.map(function (v, i) { return { v: v, l: labels[i] || String(i + 1) }; }).sort(function (a, b) { return b.v - a.v; });
+        var sv = pairs.map(function (p) { return p.v; }), sl = pairs.map(function (p) { return p.l; }), tot = sv.reduce(function (a, b) { return a + b; }, 0) || 1;
+        var bw3 = chartW / Math.max(sv.length, 1), cum = 0, cumPts = [];
+        sv.forEach(function (v, i) {
+          var bh3 = Math.max(2, (v / maxV) * (chartH - pad));
+          var x = ox + i * bw3 + bw3 * 0.1, y = toY(v);
+          svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (bw3 * 0.8).toFixed(1) + '" height="' + bh3.toFixed(1) + '" fill="url(#cg0)" rx="2"/>';
+          svg += '<text x="' + (ox + i * bw3 + bw3 / 2).toFixed(1) + '" y="' + (oy + chartH + 11).toFixed(1) + '" text-anchor="middle" font-size="8" fill="#264055">' + escHtml(String(sl[i]).slice(0, 8)) + '</text>';
+          if (showLbl) svg += '<text x="' + (x + bw3 * 0.4).toFixed(1) + '" y="' + (y + bh3 / 2 + 4).toFixed(1) + '" text-anchor="middle" font-size="8" fill="white">' + v.toFixed(0) + '</text>';
+          cum += v / tot; cumPts.push([ox + (i + 0.5) * bw3, toY(cum * maxV)]);
+        });
+        var ld = cumPts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+        svg += '<path d="' + ld + '" fill="none" stroke="' + C[1] + '" stroke-width="2" stroke-dasharray="5,2"/>';
+        cumPts.forEach(function (p) { svg += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="' + C[1] + '"/>'; });
+        var y80 = toY(maxV * 0.8);
+        svg += '<line x1="' + ox + '" y1="' + y80.toFixed(1) + '" x2="' + (ox + chartW) + '" y2="' + y80.toFixed(1) + '" stroke="' + C[5] + '" stroke-width="1" stroke-dasharray="5,3"/>';
+        svg += '<text x="' + (ox + chartW + 2).toFixed(1) + '" y="' + (y80 + 4).toFixed(1) + '" font-size="8" fill="' + C[5] + '">80%</text>';
+        svg += '<rect x="' + ox + '" y="' + (oy + chartH + 14) + '" width="9" height="9" fill="' + C[0] + '" rx="2"/><text x="' + (ox + 12) + '" y="' + (oy + chartH + 23) + '" font-size="8.5" fill="#bdd5ed">Frequency</text>';
+        svg += '<rect x="' + (ox + 80) + '" y="' + (oy + chartH + 14) + '" width="9" height="9" fill="' + C[1] + '" rx="2"/><text x="' + (ox + 92) + '" y="' + (oy + chartH + 23) + '" font-size="8.5" fill="#bdd5ed">Cumulative %</text>';
+      }
+      else if (type === 'waterfall') {
+        svg += gx(); svg += ax();
+        var bww = chartW / Math.max(nums.length, 1), run = 0;
+        nums.forEach(function (v, i) {
+          var isPos = v >= 0, col2 = isPos ? C[0] : C[5];
+          var startY2 = toY(run), endY2 = toY(run + v), bh4 = Math.abs(startY2 - endY2);
+          var x = ox + i * bww + bww * 0.1, y = Math.min(startY2, endY2);
+          svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + (bww * 0.8).toFixed(1) + '" height="' + Math.max(2, bh4).toFixed(1) + '" fill="' + col2 + '" opacity=".82" rx="2"/>';
+          svg += '<text x="' + (ox + i * bww + bww / 2).toFixed(1) + '" y="' + (oy + chartH + 11).toFixed(1) + '" text-anchor="middle" font-size="8" fill="#264055">' + escHtml(String(labels[i] || '').slice(0, 8)) + '</text>';
+          if (bh4 > 12) svg += '<text x="' + (x + bww * 0.4).toFixed(1) + '" y="' + (y + bh4 / 2 + 4).toFixed(1) + '" text-anchor="middle" font-size="8" fill="white">' + (v > 0 ? '+' : '') + v.toFixed(0) + '</text>';
+          if (i < nums.length - 1) { var ly = toY(run + v); svg += '<line x1="' + (ox + (i + 1) * bww).toFixed(1) + '" y1="' + ly.toFixed(1) + '" x2="' + (ox + (i + 1) * bww + bww * 0.1).toFixed(1) + '" y2="' + ly.toFixed(1) + '" stroke="#264055" stroke-width="1" stroke-dasharray="3,2"/>'; }
+          run += v;
+        });
+      }
+      else if (type === 'radar') {
+        var n3 = nums.length, cxr = W / 2, cyr = H / 2, rr = Math.min(W, H) / 2 - 32;
+        for (var ring = 1; ring <= 4; ring++) { var rr2 = rr * ring / 4; var rpts = Array.from({ length: n3 }, function (_, i) { var a = -Math.PI / 2 + i * 2 * Math.PI / n3; return (cxr + rr2 * Math.cos(a)).toFixed(1) + ',' + (cyr + rr2 * Math.sin(a)).toFixed(1); }); svg += '<polygon points="' + rpts.join(' ') + '" fill="none" stroke="#0d1d30" stroke-width="1"/>'; }
+        for (var ri2 = 0; ri2 < n3; ri2++) { var a2 = -Math.PI / 2 + ri2 * 2 * Math.PI / n3; svg += '<line x1="' + cxr + '" y1="' + cyr + '" x2="' + (cxr + rr * Math.cos(a2)).toFixed(1) + '" y2="' + (cyr + rr * Math.sin(a2)).toFixed(1) + '" stroke="#0d1d30" stroke-width="1"/>'; var lx = cxr + (rr + 14) * Math.cos(a2), ly2 = cyr + (rr + 14) * Math.sin(a2); svg += '<text x="' + lx.toFixed(1) + '" y="' + (ly2 + 4).toFixed(1) + '" text-anchor="middle" font-size="8.5" fill="#264055">' + escHtml(String(labels[ri2] || '').slice(0, 8)) + '</text>'; }
+        allSeries.forEach(function (s, si) { var col3 = C[si % C.length]; var rpts2 = s.data.map(function (v, i) { var a = -Math.PI / 2 + i * 2 * Math.PI / n3, rr3 = ((v - minV) / rng) * rr; return (cxr + rr3 * Math.cos(a)).toFixed(1) + ',' + (cyr + rr3 * Math.sin(a)).toFixed(1); }); svg += '<polygon points="' + rpts2.join(' ') + '" fill="' + col3 + '" fill-opacity=".2" stroke="' + col3 + '" stroke-width="1.5"/>'; rpts2.forEach(function (p) { var pp = p.split(','); svg += '<circle cx="' + pp[0] + '" cy="' + pp[1] + '" r="3" fill="' + col3 + '"/>'; }); });
+      }
+      else if (type === 'bubble') {
+        svg += gx(); svg += ax();
+        var mx2 = Math.max.apply(null, allNums) || 1;
+        allSeries.forEach(function (s, si) { (s.data || []).forEach(function (v, i) { var x = ox + (i / (Math.max(s.data.length - 1, 1))) * chartW, y = toY(v), rr4 = Math.max(5, Math.min(22, Math.abs(v) / mx2 * 18 + 4)); svg += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + rr4 + '" fill="' + C[si % C.length] + '" opacity=".65" stroke="' + C[si % C.length] + '" stroke-width="1"/>'; svg += '<text x="' + x.toFixed(1) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="middle" font-size="8" fill="white">' + v.toFixed(0) + '</text>'; }); });
+      }
+      else if (type === 'boxplot') {
+        svg += gx(); svg += ax();
+        allSeries.forEach(function (s, si) {
+          var sd = [].concat(s.data).sort(function (a, b) { return a - b; }); if (sd.length < 2) return;
+          var q1 = sd[Math.floor(sd.length * 0.25)], q3 = sd[Math.floor(sd.length * 0.75)], iqr = q3 - q1;
+          var m2 = Math.floor(sd.length / 2); var med2 = sd.length % 2 ? sd[m2] : (sd[m2 - 1] + sd[m2]) / 2;
+          var lo = Math.min.apply(null, sd.filter(function (v) { return v >= q1 - 1.5 * iqr; }));
+          var hi = Math.max.apply(null, sd.filter(function (v) { return v <= q3 + 1.5 * iqr; }));
+          var bwb = chartW / Math.max(allSeries.length, 1), cxb = ox + si * bwb + bwb / 2, hw = bwb * 0.35, col4 = C[si % C.length];
+          svg += '<line x1="' + cxb + '" y1="' + toY(hi).toFixed(1) + '" x2="' + cxb + '" y2="' + toY(q3).toFixed(1) + '" stroke="' + col4 + '" stroke-width="1.5"/>';
+          svg += '<line x1="' + cxb + '" y1="' + toY(q1).toFixed(1) + '" x2="' + cxb + '" y2="' + toY(lo).toFixed(1) + '" stroke="' + col4 + '" stroke-width="1.5"/>';
+          svg += '<rect x="' + (cxb - hw).toFixed(1) + '" y="' + toY(q3).toFixed(1) + '" width="' + (hw * 2).toFixed(1) + '" height="' + (toY(q1) - toY(q3)).toFixed(1) + '" fill="' + col4 + '" fill-opacity=".28" stroke="' + col4 + '" stroke-width="1.5"/>';
+          svg += '<line x1="' + (cxb - hw).toFixed(1) + '" y1="' + toY(med2).toFixed(1) + '" x2="' + (cxb + hw).toFixed(1) + '" y2="' + toY(med2).toFixed(1) + '" stroke="' + col4 + '" stroke-width="2"/>';
+          svg += '<text x="' + cxb + '" y="' + (oy + chartH + 11).toFixed(1) + '" text-anchor="middle" font-size="8.5" fill="#264055">' + escHtml(s.label || ('S' + (si + 1))) + '</text>';
+          sd.filter(function (v) { return v < lo || v > hi; }).forEach(function (v) { svg += '<circle cx="' + cxb + '" cy="' + toY(v).toFixed(1) + '" r="3" fill="' + col4 + '" opacity=".6"/>'; });
+        });
+      }
+      else if (type === 'heatmap') {
+        var rowsH = allSeries.length, colsH = Math.max.apply(null, allSeries.map(function (s) { return s.data.length; }).concat([1]));
+        var hmx = Math.max.apply(null, allNums.concat([1])), hmn = Math.min.apply(null, allNums.concat([0]));
+        var cw2h = chartW / colsH, ch2h = (chartH - pad) / Math.max(rowsH, 1);
+        allSeries.forEach(function (s, ri) {
+          (s.data || []).forEach(function (v, ci) {
+            var t = (v - hmn) / (hmx - hmn || 1);
+            var r3 = Math.round(t * 50), g3 = Math.round(t * 220), b3 = Math.round(255 * (1 - t));
+            svg += '<rect x="' + (ox + ci * cw2h).toFixed(1) + '" y="' + (oy + pad / 2 + ri * ch2h).toFixed(1) + '" width="' + cw2h.toFixed(1) + '" height="' + ch2h.toFixed(1) + '" fill="rgba(' + r3 + ',' + g3 + ',' + b3 + ',.75)" stroke="#060c18" stroke-width="0.5"/>';
+            if (cw2h > 20 && ch2h > 14) svg += '<text x="' + (ox + ci * cw2h + cw2h / 2).toFixed(1) + '" y="' + (oy + pad / 2 + ri * ch2h + ch2h / 2 + 4).toFixed(1) + '" text-anchor="middle" font-size="8.5" fill="white">' + v.toFixed(0) + '</text>';
+          });
+          svg += '<text x="' + (ox - 4).toFixed(1) + '" y="' + (oy + pad / 2 + ri * ch2h + ch2h / 2 + 4).toFixed(1) + '" text-anchor="end" font-size="8.5" fill="#264055">' + escHtml(s.label || ('R' + (ri + 1))) + '</text>';
+        });
+      }
+      else if (type === 'predict') {
+        svg += gx(); svg += ax();
+        var pdata = allSeries[0] && allSeries[0].data || nums, pn = pdata.length;
+        var ppts = pdata.map(function (v, i) { return [ox + i * (chartW / Math.max(pn + fpPts - 1, 1)), toY(v)]; });
+        var pD = ppts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+        svg += '<path d="' + pD + ' L' + ppts[ppts.length - 1][0].toFixed(1) + ',' + (oy + chartH) + ' L' + ppts[0][0].toFixed(1) + ',' + (oy + chartH) + ' Z" fill="' + C[0] + '" fill-opacity=".1"/>';
+        svg += '<path d="' + pD + '" fill="none" stroke="' + C[0] + '" stroke-width="2.2" stroke-linejoin="round"/>';
+        ppts.forEach(function (p, i) { svg += '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="3" fill="' + C[0] + '"/>'; if (pn <= 16) svg += '<text x="' + p[0].toFixed(1) + '" y="' + (oy + chartH + 11).toFixed(1) + '" text-anchor="middle" font-size="8" fill="#264055">' + escHtml(String(labels[i] || '').slice(0, 7)) + '</text>'; });
+        var pmx = Array.from({ length: pn }, function (_, i) { return i; }), pmy = pdata;
+        var pmxm = pmx.reduce(function (s, v) { return s + v; }, 0) / pn, pmym = pmy.reduce(function (s, v) { return s + v; }, 0) / pn;
+        var pnum = pmx.reduce(function (s, v, i) { return s + (v - pmxm) * (pmy[i] - pmym); }, 0);
+        var pden = pmx.reduce(function (s, v) { return s + (v - pmxm) * (v - pmxm); }, 0);
+        var slope = pden ? pnum / pden : 0, intercept = pmym - slope * pmxm;
+        var extN = pn + fpPts;
+        var tpts = Array.from({ length: extN }, function (_, i) { return [ox + i * (chartW / Math.max(extN - 1, 1)), toY(slope * i + intercept)]; });
+        var tD2 = tpts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+        var sdvp = Math.sqrt(pdata.reduce(function (s, v, i) { return s + (v - (slope * i + intercept)) * (v - (slope * i + intercept)); }, 0) / Math.max(pn - 2, 1));
+        var bdtop = tpts.map(function (p) { return p[0].toFixed(1) + ',' + (p[1] - sdvp / rng * (chartH - pad)).toFixed(1); });
+        var bdbot = tpts.slice().reverse().map(function (p) { return p[0].toFixed(1) + ',' + (p[1] + sdvp / rng * (chartH - pad)).toFixed(1); });
+        svg += '<path d="M' + bdtop.join(' L') + ' L' + bdbot.join(' L') + 'Z" fill="' + C[1] + '" fill-opacity=".09"/>';
+        svg += '<path d="' + tD2 + '" fill="none" stroke="' + C[1] + '" stroke-width="1.6" stroke-dasharray="6,3" opacity=".85"/>';
+        if (fpPts > 0) { for (var pi = pn; pi < extN; pi++) { var fv = slope * pi + intercept, fpx = ox + pi * (chartW / Math.max(extN - 1, 1)), fpy = toY(fv); svg += '<circle cx="' + fpx.toFixed(1) + '" cy="' + fpy.toFixed(1) + '" r="4.5" fill="' + C[1] + '" stroke="white" stroke-width="1" opacity=".9"/>'; svg += '<text x="' + fpx.toFixed(1) + '" y="' + (fpy - 7).toFixed(1) + '" text-anchor="middle" font-size="8" fill="' + C[1] + '">' + fv.toFixed(1) + '</text>'; } svg += '<text x="' + (ox + chartW - 2) + '" y="' + (oy + 14) + '" text-anchor="end" font-size="9" fill="' + C[1] + '">&#8599; Forecast +' + fpPts + 'pts</text>'; }
+        svg += '<rect x="' + ox + '" y="' + (oy + chartH + 14) + '" width="9" height="9" fill="' + C[0] + '" rx="2"/><text x="' + (ox + 12) + '" y="' + (oy + chartH + 23) + '" font-size="8.5" fill="#bdd5ed">Actual</text>';
+        svg += '<rect x="' + (ox + 56) + '" y="' + (oy + chartH + 14) + '" width="9" height="9" fill="' + C[1] + '" rx="2"/><text x="' + (ox + 68) + '" y="' + (oy + chartH + 23) + '" font-size="8.5" fill="#bdd5ed">Trend/Forecast</text>';
+      }
+
+      svg += '</svg>';
+      return svg;
+    }
+
+
+
+    function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') }
+
+    // ── GRID RENDERER ──────────────────────────────────────────────────
+    function renderGrid() {
+      const sh = getSheet();
+      const zoom = state.zoom / 100;
+      const frozenRows = state.frozen.rows;
+      const frozenCols = state.frozen.cols;
+      const selKeys = new Set(getSelectionKeys());
+      const activeKey = selectedKey();
+      const highlight = new Set(state.highlight);
+
+      // Col headers
+      const colHdrs = document.getElementById('col-headers');
+      const numCols = Math.min(TOTAL_COLS, VISIBLE_COLS + 4);
+      let hdHtml = `<div class="col-header-corner"><div class="col-header-dot"></div></div>`;
+      for (let ci = 0; ci < numCols; ci++) {
+        const col = COLS[ci];
+        const w = (sh.colWidths[col] || DEFAULT_COL_W) * zoom;
+        const isActive = col === state.selected.col;
+        const sorted = state.sortConfig?.col === col;
+        hdHtml += `<div class="col-hdr${isActive ? ' active-col' : ''}" style="width:${w}px;min-width:${w}px" data-col="${col}">
+      ${col}${sorted ? `<span class="col-sort-indicator">${state.sortConfig.dir === 'asc' ? '↑' : '↓'}</span>` : ''}
+      <div class="col-resize-handle" data-col-resize="${col}"></div>
+    </div>`;
+      }
+      colHdrs.innerHTML = hdHtml;
+
+      // Rows
+      const numRows = Math.min(TOTAL_ROWS, VISIBLE_ROWS);
+      const gridRows = document.getElementById('grid-rows');
+      let rowHtml = '';
+      for (let ri = 0; ri < numRows; ri++) {
+        const row = ri + 1;
+        const rowH = (sh.rowHeights[row] || DEFAULT_ROW_H) * zoom;
+        const isActiveRow = row === state.selected.row;
+        rowHtml += `<div class="grid-row" style="height:${rowH}px;min-height:${rowH}px">
+      <div class="row-hdr${isActiveRow ? ' active-row' : ''}" style="height:${rowH}px" data-row-resize="${row}">${row}</div>`;
+        for (let ci = 0; ci < numCols; ci++) {
+          const col = COLS[ci];
+          const w = (sh.colWidths[col] || DEFAULT_COL_W) * zoom;
+          const key = cid(col, row);
+          const cell = sh.cells[key] || {};
+          const fmt = cell.f || {};
+          const isActive = key === activeKey;
+          const isSel = selKeys.has(key) && !isActive;
+          const isHighlight = highlight.has(key);
+          const isEditing = state.editKey === key;
+          const dispVal = getDisplayVal(key, sh);
+          const isErr = String(dispVal).startsWith('#');
+
+          let style = `width:${w}px;min-width:${w}px;height:${rowH}px;`;
+          if (fmt.bold) style += 'font-weight:700;';
+          if (fmt.italic) style += 'font-style:italic;';
+          if (fmt.underline) style += 'text-decoration:underline;';
+          if (fmt.align) style += `justify-content:${fmt.align === 'center' ? 'center' : fmt.align === 'right' ? 'flex-end' : 'flex-start'};`;
+          if (fmt.fontSize) style += `font-size:${fmt.fontSize * zoom}px;`;
+          if (fmt.color && !isActive && !isSel) style += `color:${fmt.color};`;
+          if (fmt.bg && !isActive && !isSel) style += `background:${fmt.bg};`;
+          if (fmt.wrap) style += 'white-space:normal;overflow:visible;';
+
+          // Apply conditional formatting
+          if (!isActive && !isSel) {
+            const cfStyle = evalConditionalFormat(key, dispVal, sh);
+            if (cfStyle.color) style += `color:${cfStyle.color};`;
+            if (cfStyle.bg) style += `background:${cfStyle.bg};`;
+          };
+
+          let cls = 'cell';
+          if (isActive) cls += ' active';
+          else if (isSel) cls += ' selected';
+          if (isHighlight) cls += ' highlight';
+          if (isEditing) cls += ' editing';
+
+          if (isEditing) {
+            rowHtml += `<div class="${cls}" style="${style}" data-key="${key}" data-col="${col}" data-row="${row}">
+          <input class="cell-input" id="cell-edit-input" value="${escHtml(state.editVal ?? '')}" autocomplete="off" spellcheck="false">
+        </div>`;
+          } else {
+            rowHtml += `<div class="${cls}" style="${style}" data-key="${key}" data-col="${col}" data-row="${row}" title="${escHtml(dispVal)}">
+          <span style="overflow:hidden;text-overflow:ellipsis;display:block;width:100%;${isErr ? 'color:var(--red)' : ''}">${escHtml(dispVal)}</span>
+        </div>`;
+          }
+        }
+        rowHtml += '</div>';
+      }
+      gridRows.innerHTML = rowHtml;
+
+      // Focus edit input
+      if (state.editKey) {
+        const inp = document.getElementById('cell-edit-input');
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      }
+
+      // Attach resize handles
+      document.querySelectorAll('[data-col-resize]').forEach(el => {
+        el.addEventListener('mousedown', startColResize);
+        el.addEventListener('touchstart', startColResizeTouch, { passive: false });
+      });
+      document.querySelectorAll('[data-row-resize]').forEach(el => {
+        el.addEventListener('mousedown', startRowResize);
+      });
+
+      updateCellRef(); updateFormulaBar(); updateStatusBar();
+      syncAIDots();
+    }
+
+    // ── CELL REF + FORMULA BAR ─────────────────────────────────────────
+    function updateCellRef() {
+      document.getElementById('cell-ref').textContent = selectedKey();
+    }
+    function updateFormulaBar() {
+      const key = selectedKey();
+      const raw = getRawVal(key);
+      const fbar = document.getElementById('formula-input');
+      if (document.activeElement !== fbar) fbar.value = raw;
+      const disp = getDisplayVal(key);
+      const result = document.getElementById('fbar-result');
+      if (raw.startsWith('=')) result.textContent = '= ' + disp;
+      else result.textContent = '';
+    }
+
+    // ── STATUS BAR ─────────────────────────────────────────────────────
+    function updateStatusBar() {
+      const key = selectedKey();
+      document.getElementById('status-cell').textContent = key;
+      const keys = getSelectionKeys();
+      if (keys.length > 1) {
+        const nums = keys.map(k => parseFloat(getDisplayVal(k))).filter(v => !isNaN(v));
+        const sel = `${keys.length} cells`;
+        const sumStr = nums.length ? `Σ ${nums.reduce((a, b) => a + b, 0).toLocaleString()} | avg ${(nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2)} | n=${nums.length}` : '';
+        document.getElementById('status-sel').textContent = sel;
+        document.getElementById('status-sum').textContent = sumStr;
+      } else {
+        document.getElementById('status-sel').textContent = '';
+        document.getElementById('status-sum').textContent = '';
+      }
+    }
+
+    // ── COL/ROW RESIZE ─────────────────────────────────────────────────
+    function startColResize(e) {
+      const col = e.currentTarget.dataset.colResize;
+      const startX = e.clientX, startW = getSheet().colWidths[col] || DEFAULT_COL_W;
+      e.preventDefault();
+      const move = (me) => { const w = Math.max(20, startW + (me.clientX - startX)); getSheet().colWidths[col] = w; renderGrid(); };
+      const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    }
+    function startColResizeTouch(e) {
+      const col = e.currentTarget.dataset.colResize;
+      const t = e.touches[0];
+      const startX = t.clientX, startW = getSheet().colWidths[col] || DEFAULT_COL_W;
+      e.preventDefault();
+      const move = (me) => { const w = Math.max(20, startW + (me.touches[0].clientX - startX)); getSheet().colWidths[col] = w; renderGrid(); };
+      const up = () => { document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up); };
+      document.addEventListener('touchmove', move, { passive: false });
+      document.addEventListener('touchend', up);
+    }
+    function startRowResize(e) {
+      const row = parseInt(e.currentTarget.dataset.rowResize);
+      const startY = e.clientY, startH = getSheet().rowHeights[row] || DEFAULT_ROW_H;
+      e.preventDefault();
+      const move = (me) => { const h = Math.max(14, startH + (me.clientY - startY)); getSheet().rowHeights[row] = h; renderGrid(); };
+      const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    }
+
+    // ── GRID EVENT HANDLING ────────────────────────────────────────────
+    let mouseSelecting = false;
+    document.getElementById('grid-rows').addEventListener('mousedown', e => {
+      const cell = e.target.closest('[data-key]');
+      if (!cell) return;
+      const key = cell.dataset.key, col = cell.dataset.col, row = parseInt(cell.dataset.row);
+      if (state.editKey && state.editKey !== key) commitEdit();
+      if (e.shiftKey) {
+        const anchor = state.selRange?.start || state.selected;
+        state.selRange = { start: anchor, end: { col, row } };
+      } else {
+        state.selected = { col, row }; state.selRange = null;
+      }
+      mouseSelecting = true;
+      renderGrid();
+      document.getElementById('grid-scroll').focus();
+    });
+    document.getElementById('grid-rows').addEventListener('mousemove', e => {
+      if (!mouseSelecting) return;
+      const cell = e.target.closest('[data-key]');
+      if (!cell) return;
+      const col = cell.dataset.col, row = parseInt(cell.dataset.row);
+      state.selRange = { start: state.selRange?.start || state.selected, end: { col, row } };
+      renderGrid();
+    });
+    document.addEventListener('mouseup', () => { mouseSelecting = false; });
+    document.getElementById('grid-rows').addEventListener('dblclick', e => {
+      const cell = e.target.closest('[data-key]');
+      if (!cell) return;
+      const key = cell.dataset.key;
+      state.editKey = key;
+      state.editVal = getRawVal(key);
+      renderGrid();
+    });
+    document.getElementById('grid-rows').addEventListener('contextmenu', e => {
+      e.preventDefault();
+      const cell = e.target.closest('[data-key]');
+      if (cell) { state.selected = { col: cell.dataset.col, row: parseInt(cell.dataset.row) }; state.selRange = null; renderGrid(); }
+      showContextMenu(e.clientX, e.clientY);
+    });
+
+    // Touch support for mobile
+    let touchStartKey = null, touchTimer = null;
+    document.getElementById('grid-rows').addEventListener('touchstart', e => {
+      const cell = e.target.closest('[data-key]');
+      if (!cell) return;
+      touchStartKey = cell.dataset.key;
+      touchTimer = setTimeout(() => {
+        const { col, row } = cell.dataset;
+        state.selected = { col, row: parseInt(row) }; state.selRange = null;
+        showContextMenu(e.touches[0].clientX, e.touches[0].clientY);
+      }, 600);
+    }, { passive: true });
+    document.getElementById('grid-rows').addEventListener('touchend', e => {
+      clearTimeout(touchTimer);
+      const cell = e.target.closest('[data-key]');
+      if (!cell) return;
+      const key = cell.dataset.key;
+      if (key === touchStartKey) {
+        if (state.editKey === key) {/* already editing */ }
+        else if (state.selected.col === cell.dataset.col && state.selected.row === parseInt(cell.dataset.row)) {
+          state.editKey = key; state.editVal = getRawVal(key);
+        } else {
+          state.selected = { col: cell.dataset.col, row: parseInt(cell.dataset.row) }; state.selRange = null;
+        }
+        renderGrid();
+      }
+    });
+
+    // Keyboard
+    document.getElementById('grid-scroll').setAttribute('tabindex', '0');
+    document.getElementById('grid-scroll').addEventListener('keydown', handleKeyDown);
+    document.getElementById('app').addEventListener('keydown', handleKeyDown);
+
+    function handleKeyDown(e) {
+      const { col, row } = state.selected;
+      const ci = COLS.indexOf(col);
+
+      if (state.editKey) {
+        // In edit mode
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(); moveSelection(0, 1); }
+        else if (e.key === 'Escape') { state.editKey = null; state.editVal = ''; renderGrid(); }
+        else if (e.key === 'Tab') { e.preventDefault(); commitEdit(); moveSelection(e.shiftKey ? -1 : 1, 0); }
+        return;
+      }
+
+      const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter', 'PageUp', 'PageDown', 'Home', 'End'];
+      if (navKeys.includes(e.key)) e.preventDefault();
+
+      if (e.key === 'Enter') { state.editKey = selectedKey(); state.editVal = getRawVal(selectedKey()); renderGrid(); }
+      else if (e.key === 'Delete' || e.key === 'Backspace') { saveHistory(); getSelectionKeys().forEach(k => { setCell(k, ''); }); renderGrid(); }
+      else if (e.key === 'Escape') { state.selRange = null; renderGrid(); }
+      else if (e.key === 'ArrowUp') moveSelection(0, -1, e.shiftKey, e.ctrlKey || e.metaKey);
+      else if (e.key === 'ArrowDown') moveSelection(0, 1, e.shiftKey, e.ctrlKey || e.metaKey);
+      else if (e.key === 'ArrowLeft') moveSelection(-1, 0, e.shiftKey, e.ctrlKey || e.metaKey);
+      else if (e.key === 'ArrowRight') moveSelection(1, 0, e.shiftKey, e.ctrlKey || e.metaKey);
+      else if (e.key === 'Tab') moveSelection(e.shiftKey ? -1 : 1, 0);
+      else if (e.key === 'PageUp') moveSelection(0, -15);
+      else if (e.key === 'PageDown') moveSelection(0, 15);
+      else if (e.key === 'Home') moveSelectionTo(e.ctrlKey ? COLS[0] : col, e.ctrlKey ? 1 : row === 1 ? 1 : row);
+      else if (e.key === 'End') moveSelectionTo(e.ctrlKey ? COLS[TOTAL_COLS - 1] : col, e.ctrlKey ? TOTAL_ROWS : row);
+      else if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undoAction(); }
+      else if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redoAction(); }
+      else if (e.ctrlKey && e.key === 'c') { e.preventDefault(); copySelection(); }
+      else if (e.ctrlKey && e.key === 'x') { e.preventDefault(); cutSelection(); }
+      else if (e.ctrlKey && e.key === 'v') { e.preventDefault(); pasteClipboard(); }
+      else if (e.ctrlKey && e.key === 'a') { e.preventDefault(); selectAll(); }
+      else if (e.ctrlKey && e.key === 'f') { e.preventDefault(); document.getElementById('find-modal').classList.add('show'); }
+      else if (e.ctrlKey && e.key === 'd') { e.preventDefault(); fillDown(); }
+      else if (e.ctrlKey && e.key === 'r') { e.preventDefault(); fillRight(); }
+      else if (e.ctrlKey && e.key === 's') { e.preventDefault(); exportCSV(); }
+      else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+        state.editKey = selectedKey(); state.editVal = e.key; renderGrid();
+      }
+    }
+
+    function moveSelection(dc, dr, shift = false, jump = false) {
+      const ci = COLS.indexOf(state.selected.col);
+      const newC = Math.max(0, Math.min(TOTAL_COLS - 1, ci + (jump ? dc * 15 : dc)));
+      const newR = Math.max(1, Math.min(TOTAL_ROWS, state.selected.row + (jump ? dr * 15 : dr)));
+      const anchor = state.selRange?.start || state.selected;
+      state.selected = { col: COLS[newC], row: newR };
+      if (shift) state.selRange = { start: anchor, end: state.selected };
+      else state.selRange = null;
+      scrollCellIntoView(COLS[newC], newR);
+      renderGrid();
+    }
+    function moveSelectionTo(col, row) {
+      state.selected = { col, row }; state.selRange = null;
+      scrollCellIntoView(col, row); renderGrid();
+    }
+    function scrollCellIntoView(col, row) {
+      const sh = getSheet(), zoom = state.zoom / 100;
+      const scroll = document.getElementById('grid-scroll');
+      const ci = COLS.indexOf(col);
+      const x = COLS.slice(0, ci).reduce((s, c) => s + (sh.colWidths[c] || DEFAULT_COL_W) * zoom, 48);
+      const y = (row - 1) * (DEFAULT_ROW_H * zoom) + 28;
+      const cW = (sh.colWidths[col] || DEFAULT_COL_W) * zoom;
+      if (x < scroll.scrollLeft) scroll.scrollLeft = x - 10;
+      else if (x + cW > scroll.scrollLeft + scroll.clientWidth) scroll.scrollLeft = x + cW - scroll.clientWidth + 10;
+      if (y < scroll.scrollTop) scroll.scrollTop = y - 10;
+      else if (y + DEFAULT_ROW_H * zoom > scroll.scrollTop + scroll.clientHeight) scroll.scrollTop = y + DEFAULT_ROW_H * zoom - scroll.clientHeight + 10;
+    }
+    function selectAll() {
+      state.selRange = { start: { col: COLS[0], row: 1 }, end: { col: COLS[TOTAL_COLS - 1], row: TOTAL_ROWS } };
+      renderGrid();
+    }
+
+    // ── EDIT/COMMIT ────────────────────────────────────────────────────
+    function commitEdit() {
+      if (!state.editKey) return;
+      saveHistory();
+      setCell(state.editKey, state.editVal);
+      state.editKey = null; state.editVal = '';
+      renderGrid();
+    }
+
+    // Listen for input on cell editor
+    document.getElementById('grid-rows').addEventListener('input', e => {
+      if (e.target.classList.contains('cell-input')) {
+        state.editVal = e.target.value;
+        document.getElementById('formula-input').value = e.target.value;
+      }
+    });
+
+    // Formula bar
+    const fbarInput = document.getElementById('formula-input');
+    fbarInput.addEventListener('focus', () => {
+      if (!state.editKey) { state.editKey = selectedKey(); state.editVal = getRawVal(selectedKey()); renderGrid(); }
+    });
+    fbarInput.addEventListener('input', e => {
+      state.editVal = e.target.value;
+      const inp = document.getElementById('cell-edit-input');
+      if (inp) inp.value = e.target.value;
+    });
+    fbarInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); commitEdit(); moveSelection(0, 1); }
+      if (e.key === 'Escape') { state.editKey = null; state.editVal = ''; renderGrid(); }
+    });
+
+    // ── CLIPBOARD ──────────────────────────────────────────────────────
+    function copySelection() {
+      const keys = getSelectionKeys();
+      state.clipboard = { keys, cells: {}, op: 'copy' };
+      keys.forEach(k => { state.clipboard.cells[k] = JSON.parse(JSON.stringify(getCellObj(k))); });
+      document.getElementById('status-mode').textContent = 'COPIED';
+      setTimeout(() => document.getElementById('status-mode').textContent = 'READY', 1500);
+    }
+    function cutSelection() {
+      copySelection(); state.clipboard.op = 'cut';
+      document.getElementById('status-mode').textContent = 'CUT';
+    }
+    function pasteClipboard() {
+      if (!state.clipboard) return;
+      saveHistory();
+      const { keys, cells, op } = state.clipboard;
+      const srcRef = parseRef(keys[0]);
+      const destRef = state.selected;
+      const dc = COLS.indexOf(destRef.col) - COLS.indexOf(srcRef.col);
+      const dr = destRef.row - srcRef.row;
+      keys.forEach(k => {
+        const ref = parseRef(k);
+        if (!ref) return;
+        const nc = Math.max(0, Math.min(TOTAL_COLS - 1, COLS.indexOf(ref.col) + dc));
+        const nr = Math.max(1, Math.min(TOTAL_ROWS, ref.row + dr));
+        const nk = cid(COLS[nc], nr);
+        getSheet().cells[nk] = JSON.parse(JSON.stringify(cells[k] || { v: '' }));
+        if (op === 'cut') delete getSheet().cells[k];
+      });
+      if (op === 'cut') state.clipboard = null;
+      renderGrid();
+    }
+
+    // ── UNDO/REDO ──────────────────────────────────────────────────────
+    function undoAction() {
+      if (!state.history.length) return;
+      state.future.push(JSON.stringify(getSheet().cells));
+      if (state.future.length > 60) state.future.shift();
+      getSheet().cells = JSON.parse(state.history.pop());
+      renderGrid();
+    }
+    function redoAction() {
+      if (!state.future.length) return;
+      state.history.push(JSON.stringify(getSheet().cells));
+      getSheet().cells = JSON.parse(state.future.pop());
+      renderGrid();
+    }
+
+    // ── SORT ───────────────────────────────────────────────────────────
+    function sortByColumn(col, dir) {
+      saveHistory();
+      const sh = getSheet();
+      const startRow = 2, endRow = TOTAL_ROWS;
+      const rows = [];
+      for (let r = startRow; r <= endRow; r++) {
+        const rowData = {};
+        COLS.forEach(c => { rowData[c] = sh.cells[cid(c, r)] || { v: '' }; });
+        if (Object.values(rowData).some(c => c.v !== '' && c.v !== undefined)) rows.push({ r, data: rowData });
+      }
+      rows.sort((a, b) => {
+        const va = getDisplayVal(cid(col, a.r), sh);
+        const vb = getDisplayVal(cid(col, b.r), sh);
+        const na = parseFloat(va), nb = parseFloat(vb);
+        const cmp = (!isNaN(na) && !isNaN(nb)) ? na - nb : va.localeCompare(vb);
+        return dir === 'asc' ? cmp : -cmp;
+      });
+      rows.forEach(({ data }, i) => {
+        const r = startRow + i;
+        COLS.forEach(c => { sh.cells[cid(c, r)] = JSON.parse(JSON.stringify(data[c] || { v: '' })); });
+      });
+      state.sortConfig = { col, dir };
+      renderGrid();
+    }
+
+    // ── FILL ───────────────────────────────────────────────────────────
+    function fillDown() {
+      const keys = getSelectionKeys(); if (keys.length < 2) return;
+      saveHistory();
+      const first = getCellObj(keys[0]);
+      keys.slice(1).forEach(k => setCell(k, first.v));
+      renderGrid();
+    }
+    function fillRight() {
+      if (!state.selRange) return;
+      saveHistory();
+      const { start, end } = state.selRange;
+      const c1 = COLS.indexOf(start.col);
+      for (let r = start.row; r <= end.row; r++) {
+        const srcVal = getRawVal(cid(COLS[c1], r));
+        for (let c = c1 + 1; c <= COLS.indexOf(end.col); c++)setCell(cid(COLS[c], r), srcVal);
+      }
+      renderGrid();
+    }
+    function autoSum() {
+      const key = selectedKey();
+      const { col, row } = state.selected;
+      // Find range above
+      let r = row - 1; while (r > 0 && getRawVal(cid(col, r))) { r--; }
+      const rangeStr = r < row - 1 ? `${cid(col, r + 1)}:${cid(col, row - 1)}` : cid(col, row - 1);
+      saveHistory();
+      setCell(key, `=SUM(${rangeStr})`);
+      state.editKey = null;
+      renderGrid();
+    }
+
+    // ── INSERT/DELETE ROWS/COLS ────────────────────────────────────────
+    function insertRow(atRow) {
+      saveHistory();
+      const sh = getSheet();
+      const newCells = {};
+      Object.entries(sh.cells).forEach(([k, v]) => {
+        const ref = parseRef(k);
+        if (!ref) { newCells[k] = v; return; }
+        if (ref.row >= atRow) newCells[cid(ref.col, ref.row + 1)] = v;
+        else newCells[k] = v;
+      });
+      sh.cells = newCells; renderGrid();
+    }
+    function deleteRow(atRow) {
+      saveHistory();
+      const sh = getSheet();
+      const newCells = {};
+      Object.entries(sh.cells).forEach(([k, v]) => {
+        const ref = parseRef(k);
+        if (!ref) { newCells[k] = v; return; }
+        if (ref.row === atRow) return;
+        if (ref.row > atRow) newCells[cid(ref.col, ref.row - 1)] = v;
+        else newCells[k] = v;
+      });
+      sh.cells = newCells; renderGrid();
+    }
+    function insertCol(atCol) {
+      saveHistory();
+      const sh = getSheet();
+      const atIdx = COLS.indexOf(atCol);
+      const newCells = {};
+      Object.entries(sh.cells).forEach(([k, v]) => {
+        const ref = parseRef(k);
+        if (!ref) { newCells[k] = v; return; }
+        const ci = COLS.indexOf(ref.col);
+        if (ci >= atIdx) newCells[cid(COLS[ci + 1], ref.row)] = v;
+        else newCells[k] = v;
+      });
+      sh.cells = newCells; renderGrid();
+    }
+    function deleteCol(atCol) {
+      saveHistory();
+      const sh = getSheet();
+      const atIdx = COLS.indexOf(atCol);
+      const newCells = {};
+      Object.entries(sh.cells).forEach(([k, v]) => {
+        const ref = parseRef(k);
+        if (!ref) { newCells[k] = v; return; }
+        const ci = COLS.indexOf(ref.col);
+        if (ci === atIdx) return;
+        if (ci > atIdx) newCells[cid(COLS[ci - 1], ref.row)] = v;
+        else newCells[k] = v;
+      });
+      sh.cells = newCells; renderGrid();
+    }
+
+    // ── FIND & REPLACE ─────────────────────────────────────────────────
+    let findResults = [], findIdx = 0;
+    document.getElementById('find-input').addEventListener('input', doFind);
+    function doFind() {
+      const q = document.getElementById('find-input').value.toLowerCase();
+      if (!q) { state.highlight = []; findResults = []; document.getElementById('find-count').textContent = '0 found'; renderGrid(); return; }
+      findResults = Object.entries(getSheet().cells)
+        .filter(([, c]) => String(c?.v ?? '').toLowerCase().includes(q))
+        .map(([k]) => k);
+      state.highlight = [...findResults];
+      document.getElementById('find-count').textContent = `${findResults.length} found`;
+      findIdx = 0;
+      if (findResults.length) { const ref = parseRef(findResults[0]); if (ref) { state.selected = ref; scrollCellIntoView(ref.col, ref.row); } }
+      renderGrid();
+    }
+    document.getElementById('find-next').onclick = () => { if (!findResults.length) return; findIdx = (findIdx + 1) % findResults.length; const ref = parseRef(findResults[findIdx]); if (ref) { state.selected = ref; scrollCellIntoView(ref.col, ref.row); renderGrid(); } };
+    document.getElementById('find-prev').onclick = () => { if (!findResults.length) return; findIdx = (findIdx - 1 + findResults.length) % findResults.length; const ref = parseRef(findResults[findIdx]); if (ref) { state.selected = ref; scrollCellIntoView(ref.col, ref.row); renderGrid(); } };
+    document.getElementById('find-replace-btn').onclick = () => {
+      if (!findResults[findIdx]) return; saveHistory();
+      const k = findResults[findIdx];
+      const v = String(getCellObj(k).v || '').replace(new RegExp(document.getElementById('find-input').value, 'gi'), document.getElementById('replace-input').value);
+      setCell(k, v); doFind(); renderGrid();
+    };
+    document.getElementById('find-replace-all').onclick = () => {
+      saveHistory(); const r = document.getElementById('replace-input').value;
+      findResults.forEach(k => { const v = String(getCellObj(k).v || '').replace(new RegExp(document.getElementById('find-input').value, 'gi'), r); setCell(k, v); });
+      doFind(); renderGrid();
+    };
+    document.getElementById('find-close').onclick = () => { document.getElementById('find-modal').classList.remove('show'); state.highlight = []; renderGrid(); };
+    document.getElementById('find-modal').addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('find-close').click(); });
+
+    // ── IMPORT / EXPORT ────────────────────────────────────────────────
+    // Load SheetJS (XLSX library)
+    let XLSX_LIB = null;
+    async function getXLSX() {
+      if (XLSX_LIB) return XLSX_LIB;
+      const mod = await import('https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs');
+      XLSX_LIB = mod;
+      return XLSX_LIB;
+    }
+
+    function exportCSV() {
+      let csv = '';
+      for (let r = 1; r <= TOTAL_ROWS; r++) {
+        const row = COLS.map(c => getDisplayVal(cid(c, r)));
+        if (row.some(v => v)) {
+          csv += row.map(v => {
+            const s = String(v ?? '');
+            return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+          }).join(',') + '\n';
+        }
+      }
+      downloadText(`${getSheet().name}.csv`, csv, 'text/csv');
+    }
+
+    async function exportXLSX() {
+      try {
+        const X = await getXLSX();
+        const wb = X.utils.book_new();
+        state.sheets.forEach((sh) => {
+          const aoa = [];
+          let maxRow = 1, maxCol = 0;
+          Object.keys(sh.cells).forEach(k => {
+            const ref = parseRef(k);
+            if (ref) { maxRow = Math.max(maxRow, ref.row); maxCol = Math.max(maxCol, COLS.indexOf(ref.col)); }
+          });
+          for (let r = 1; r <= maxRow; r++) {
+            const row = [];
+            for (let c = 0; c <= maxCol; c++) {
+              const key = cid(COLS[c], r);
+              const raw = sh.cells[key]?.v ?? '';
+              const displayed = getDisplayVal(key, sh);
+              // Store numeric values as numbers, else string
+              const n = parseFloat(displayed);
+              row.push(!isNaN(n) && displayed !== '' ? n : displayed);
+            }
+            aoa.push(row);
+          }
+          const ws = X.utils.aoa_to_sheet(aoa);
+          X.utils.book_append_sheet(wb, ws, sh.name.slice(0, 31));
+        });
+        const buf = X.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `${getSheet().name}.xlsx`; a.click();
+      } catch (e) {
+        alert('XLSX export failed: ' + e.message);
+      }
+    }
+
+    function exportJSON() {
+      const out = {};
+      Object.entries(getSheet().cells).forEach(([k, v]) => { if (v?.v !== undefined && v?.v !== '') out[k] = { value: v.v, display: getDisplayVal(k), format: v.f }; });
+      downloadText(`${getSheet().name}.json`, JSON.stringify(out, null, 2), 'application/json');
+    }
+    function downloadText(name, content, type) {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], { type })); a.download = name; a.click();
+    }
+
+    async function handleFileImport(file) {
+      if (!file) return;
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (ext === 'xlsx' || ext === 'xls' || ext === 'xlsm') {
+        try {
+          const X = await getXLSX();
+          const buf = await file.arrayBuffer();
+          const wb = X.read(buf, { type: 'array' });
+          saveHistory();
+          // Import all sheets
+          wb.SheetNames.forEach((shName, si) => {
+            const ws = wb.Sheets[shName];
+            const aoa = X.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            let sh;
+            if (si === 0) { sh = getSheet(); sh.name = shName.slice(0, 31); sh.cells = {}; }
+            else {
+              while (state.sheets.length <= si) state.sheets.push(createSheet(shName));
+              sh = state.sheets[si]; sh.name = shName.slice(0, 31); sh.cells = {};
+            }
+            aoa.forEach((row, ri) => {
+              row.forEach((val, ci) => {
+                if (ci < TOTAL_COLS && ri < TOTAL_ROWS && val !== '' && val !== null && val !== undefined) {
+                  sh.cells[cid(COLS[ci], ri + 1)] = { v: String(val) };
+                }
+              });
+            });
+          });
+          rebuildTabs(); renderGrid();
+          alert(`Imported ${wb.SheetNames.length} sheet(s) from "${file.name}"`);
+        } catch (e) {
+          alert('XLSX import failed: ' + e.message);
+        }
+      } else {
+        // CSV/TSV
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          saveHistory();
+          const sep = ext === 'tsv' ? '\t' : ',';
+          const lines = ev.target.result.split('\n');
+          lines.forEach((line, ri) => {
+            // Parse CSV properly (handle quoted fields)
+            const cells = parseCSVLine(line, sep);
+            cells.forEach((val, ci) => {
+              if (ci < TOTAL_COLS && ri < TOTAL_ROWS && val !== '')
+                setCell(cid(COLS[ci], ri + 1), val.trim().replace(/^"|"$/g, ''));
+            });
+          });
+          renderGrid();
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    function parseCSVLine(line, sep = ',') {
+      const result = []; let cur = '', inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+          else inQ = !inQ;
+        } else if (ch === sep && !inQ) { result.push(cur); cur = ''; }
+        else cur += ch;
+      }
+      result.push(cur);
+      return result;
+    }
+
+    document.getElementById('file-input').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      handleFileImport(file);
+      e.target.value = '';
+    });
+
+    // ── SHEETS ─────────────────────────────────────────────────────────
+    function renderTabs() {
+      const tabs = document.getElementById('sheet-tabs');
+      let html = '';
+      state.sheets.forEach((sh, i) => {
+        html += `<div class="sheet-tab${i === state.activeSheet ? ' active' : ''}" data-sheet="${i}">
+      <span class="tab-name" data-sheet="${i}">${escHtml(sh.name)}</span>
+      ${state.sheets.length > 1 ? `<span class="tab-close" data-sheet-close="${i}">×</span>` : ''}
+    </div>`;
+      });
+      tabs.insertAdjacentHTML('afterbegin', html);
+    }
+    function rebuildTabs() {
+      document.querySelectorAll('.sheet-tab').forEach(el => el.remove());
+      renderTabs();
+    }
+    document.getElementById('sheet-tabs').addEventListener('click', e => {
+      const closeBtn = e.target.closest('[data-sheet-close]');
+      if (closeBtn) {
+        const idx = parseInt(closeBtn.dataset.sheetClose);
+        if (state.sheets.length <= 1) return;
+        state.sheets.splice(idx, 1);
+        state.activeSheet = Math.min(state.activeSheet, state.sheets.length - 1);
+        rebuildTabs(); renderGrid(); return;
+      }
+      const tab = e.target.closest('[data-sheet]');
+      if (tab) { state.activeSheet = parseInt(tab.dataset.sheet); rebuildTabs(); renderGrid(); }
+    });
+    document.getElementById('sheet-tabs').addEventListener('dblclick', e => {
+      const nameEl = e.target.closest('.tab-name');
+      if (!nameEl) return;
+      const idx = parseInt(nameEl.dataset.sheet);
+      const inp = document.createElement('input');
+      inp.value = state.sheets[idx].name; inp.style.cssText = 'width:80px;background:none;border:none;outline:none;font-size:12px;color:var(--teal);font-family:var(--font-ui)';
+      nameEl.replaceWith(inp); inp.focus(); inp.select();
+      const done = () => { state.sheets[idx].name = inp.value || state.sheets[idx].name; rebuildTabs(); };
+      inp.addEventListener('blur', done);
+      inp.addEventListener('keydown', e2 => { if (e2.key === 'Enter' || e2.key === 'Escape') done(); });
+    });
+    document.getElementById('add-sheet').onclick = () => {
+      const name = `Sheet${state.sheets.length + 1}`;
+      state.sheets.push(createSheet(name));
+      state.activeSheet = state.sheets.length - 1;
+      rebuildTabs(); renderGrid();
+    };
+
+    // ── TOOLBAR BUTTONS ────────────────────────────────────────────────
+    document.getElementById('btn-undo').onclick = undoAction;
+    document.getElementById('btn-redo').onclick = redoAction;
+    document.getElementById('btn-export').onclick = exportCSV;
+    document.getElementById('btn-export-xlsx').onclick = exportXLSX;
+    document.getElementById('btn-export-json').onclick = exportJSON;
+    document.getElementById('btn-import').onclick = () => document.getElementById('file-input').click();
+    document.getElementById('btn-find').onclick = () => document.getElementById('find-modal').classList.toggle('show');
+    document.getElementById('btn-sort-asc').onclick = () => sortByColumn(state.selected.col, 'asc');
+    document.getElementById('btn-sort-desc')?.addEventListener('click', () => sortByColumn(state.selected.col, 'desc'));
+
+    // ══ SELECTION TOOL (rubber-band drag to select any cell region) ══
+    let selToolActive = false;
+    let rbActive = false;
+
+    function toggleSelTool() {
+      selToolActive = !selToolActive;
+      const btn = document.getElementById('btn-sel-tool');
+      if (btn) btn.classList.toggle('active', selToolActive);
+      document.body.classList.toggle('sel-tool', selToolActive);
+      document.getElementById('status-mode').textContent = selToolActive ? 'SELECT TOOL' : 'READY';
+      const sm2 = document.getElementById('status-mode');
+      if (sm2) sm2.textContent = selToolActive ? 'SELECT' : 'READY';
+    }
+    document.getElementById('btn-sel-tool')?.addEventListener('click', toggleSelTool);
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      // Don't fire when a modal/panel is open
+      const panelOpen = document.getElementById('chart-panel')?.classList.contains('show') ||
+        document.getElementById('find-modal')?.classList.contains('show') ||
+        document.getElementById('goto-modal')?.classList.contains('show');
+      if (panelOpen) return;
+      if (e.key === 's' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); toggleSelTool(); }
+    });
+
+    function pixelToCell(px, py) {
+      const sh = getSheet(), z = state.zoom / 100;
+      let x = 48 * z, col = null;
+      for (let ci = 0; ci < TOTAL_COLS; ci++) { const w = (sh.colWidths && sh.colWidths[COLS[ci]] || DEFAULT_COL_W) * z; if (px >= x && px < x + w) { col = COLS[ci]; break; } x += w; }
+      let y = 26 * z, row = null;
+      for (let ri = 1; ri <= TOTAL_ROWS; ri++) { const h = (sh.rowHeights && sh.rowHeights[ri] || DEFAULT_ROW_H) * z; if (py >= y && py < y + h) { row = ri; break; } y += h; }
+      if (col && row) return { col, row }; return null;
+    }
+
+    // Hook rubber-band into grid mousedown
+    const gridScrollEl = document.getElementById('grid-scroll');
+    gridScrollEl.addEventListener('mousedown', e => {
+      if (!selToolActive) return;
+      if (e.target.closest('[data-row]') === null && e.target.closest('.cell') === null) return;
+      e.preventDefault(); e.stopPropagation();
+      const rect = document.getElementById('grid-inner').getBoundingClientRect();
+      const startX = e.clientX - rect.left + gridScrollEl.scrollLeft;
+      const startY = e.clientY - rect.top + gridScrollEl.scrollTop;
+      const rb = document.getElementById('rubber-band-sel');
+      if (rb) { rb.style.display = 'block'; rb.style.left = startX + 'px'; rb.style.top = startY + 'px'; rb.style.width = '0px'; rb.style.height = '0px'; }
+      rbActive = true;
+      const startCell = pixelToCell(startX, startY);
+      if (startCell) { state.selected = { col: startCell.col, row: startCell.row }; state.selRange = null; }
+
+      const onMove = mv => {
+        if (!rbActive) return;
+        const endX = mv.clientX - rect.left + gridScrollEl.scrollLeft;
+        const endY = mv.clientY - rect.top + gridScrollEl.scrollTop;
+        const x = Math.min(startX, endX), y = Math.min(startY, endY), w = Math.abs(endX - startX), h = Math.abs(endY - startY);
+        if (rb) { rb.style.left = x + 'px'; rb.style.top = y + 'px'; rb.style.width = w + 'px'; rb.style.height = h + 'px'; }
+        const endCell = pixelToCell(endX, endY);
+        if (startCell && endCell) { state.selRange = { start: { col: startCell.col, row: startCell.row }, end: { col: endCell.col, row: endCell.row } }; renderGrid(); }
+      };
+      const onUp = () => {
+        rbActive = false;
+        if (rb) rb.style.display = 'none';
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        renderGrid();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }, true);
+
+    // Escape cancels selection tool
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && selToolActive) { selToolActive = false; const btn = document.getElementById('btn-sel-tool'); if (btn) btn.classList.remove('active'); document.body.classList.remove('sel-tool'); const msb = document.getElementById('mob-sel-tool'); if (msb) msb.classList.remove('active'); document.getElementById('status-mode').textContent = 'READY'; } });
+
+    // ══ TOUCH SUPPORT FOR RUBBER-BAND SELECTION (mobile) ══
+    gridScrollEl.addEventListener('touchstart', e => {
+      if (!selToolActive) return;
+      const touch = e.touches[0];
+      const rect = document.getElementById('grid-inner').getBoundingClientRect();
+      const startX = touch.clientX - rect.left + gridScrollEl.scrollLeft;
+      const startY = touch.clientY - rect.top + gridScrollEl.scrollTop;
+      const rb = document.getElementById('rubber-band-sel');
+      if (rb) { rb.style.display = 'block'; rb.style.left = startX + 'px'; rb.style.top = startY + 'px'; rb.style.width = '2px'; rb.style.height = '2px'; }
+      rbActive = true;
+      const startCell = pixelToCell(startX, startY);
+      if (startCell) { state.selected = { col: startCell.col, row: startCell.row }; state.selRange = null; }
+      const onTMove = mv => {
+        if (!rbActive || !mv.touches[0]) return;
+        mv.preventDefault();
+        const t = mv.touches[0];
+        const endX = t.clientX - rect.left + gridScrollEl.scrollLeft;
+        const endY = t.clientY - rect.top + gridScrollEl.scrollTop;
+        const x = Math.min(startX, endX), y = Math.min(startY, endY), w = Math.abs(endX - startX), h = Math.abs(endY - startY);
+        if (rb) { rb.style.left = x + 'px'; rb.style.top = y + 'px'; rb.style.width = w + 'px'; rb.style.height = h + 'px'; }
+        const endCell = pixelToCell(endX, endY);
+        if (startCell && endCell) { state.selRange = { start: { col: startCell.col, row: startCell.row }, end: { col: endCell.col, row: endCell.row } }; renderGrid(); }
+      };
+      const onTEnd = () => {
+        rbActive = false;
+        if (rb) rb.style.display = 'none';
+        gridScrollEl.removeEventListener('touchmove', onTMove);
+        gridScrollEl.removeEventListener('touchend', onTEnd);
+        renderGrid();
+      };
+      gridScrollEl.addEventListener('touchmove', onTMove, { passive: false });
+      gridScrollEl.addEventListener('touchend', onTEnd);
+    }, { passive: true });
+
+    // ══ GO TO RANGE ══
+    function openGoTo() { const m = document.getElementById('goto-modal'); if (m) { m.classList.add('show'); const inp = document.getElementById('goto-input'); if (inp) { inp.value = ''; inp.focus(); } } }
+    document.getElementById('btn-goto')?.addEventListener('click', openGoTo);
+    document.getElementById('goto-close')?.addEventListener('click', () => document.getElementById('goto-modal').classList.remove('show'));
+    document.getElementById('goto-go')?.addEventListener('click', () => {
+      const val = (document.getElementById('goto-input')?.value || '').trim();
+      const rm = val.match(/^([A-Z]+\d+):([A-Z]+\d+)$/i);
+      if (rm) { const a = parseRef(rm[1]), b = parseRef(rm[2]); if (a && b) { state.selected = a; state.selRange = { start: a, end: b }; scrollCellIntoView(a.col, a.row); renderGrid(); } }
+      else { const r = parseRef(val); if (r) { state.selected = r; state.selRange = null; scrollCellIntoView(r.col, r.row); renderGrid(); } }
+      document.getElementById('goto-modal').classList.remove('show');
+    });
+    document.getElementById('goto-input')?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('goto-go').click(); if (e.key === 'Escape') document.getElementById('goto-modal').classList.remove('show'); });
+    document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'g') { e.preventDefault(); openGoTo(); } });
+    document.getElementById('btn-freeze').onclick = () => {
+      const fi = state.frozen;
+      if (fi.rows || fi.cols) { state.frozen = { rows: 0, cols: 0 }; }
+      else { state.frozen = { rows: state.selected.row - 1, cols: COLS.indexOf(state.selected.col) }; }
+      document.getElementById('btn-freeze').classList.toggle('active', !!(state.frozen.rows || state.frozen.cols));
+    };
+    document.getElementById('btn-sum').onclick = autoSum;
+    document.getElementById('btn-fill-down').onclick = fillDown;
+    document.getElementById('btn-fill-right').onclick = fillRight;
+    document.getElementById('btn-del-row').onclick = () => deleteRow(state.selected.row);
+    document.getElementById('btn-del-col').onclick = () => deleteCol(state.selected.col);
+    document.getElementById('btn-ins-row').onclick = () => insertRow(state.selected.row);
+    document.getElementById('btn-ins-col').onclick = () => insertCol(state.selected.col);
+    document.getElementById('zoom-sel').onchange = e => { state.zoom = parseInt(e.target.value); renderGrid(); };
+    document.getElementById('btn-new').onclick = () => { if (confirm('Clear all data and start new sheet?')) { state.sheets = [createSheet('Sheet1')]; state.activeSheet = 0; rebuildTabs(); renderGrid(); } };
+
+    // Formatting
+    const fmtBtns = {
+      'fmt-bold': () => applyFmtToSelection({ bold: !(getCellFmt(selectedKey()).bold) }),
+      'fmt-italic': () => applyFmtToSelection({ italic: !(getCellFmt(selectedKey()).italic) }),
+      'fmt-underline': () => applyFmtToSelection({ underline: !(getCellFmt(selectedKey()).underline) }),
+      'fmt-align-l': () => applyFmtToSelection({ align: 'left' }),
+      'fmt-align-c': () => applyFmtToSelection({ align: 'center' }),
+      'fmt-align-r': () => applyFmtToSelection({ align: 'right' }),
+      'fmt-wrap': () => applyFmtToSelection({ wrap: !getCellFmt(selectedKey()).wrap }),
+    };
+    Object.entries(fmtBtns).forEach(([id, fn]) => { const el = document.getElementById(id); if (el) el.onclick = fn; });
+    document.getElementById('fmt-color').oninput = e => applyFmtToSelection({ color: e.target.value });
+    document.getElementById('fmt-bg').oninput = e => applyFmtToSelection({ bg: e.target.value });
+    document.getElementById('font-size-sel').onchange = e => applyFmtToSelection({ fontSize: parseInt(e.target.value) });
+    document.getElementById('num-fmt-sel').onchange = e => applyFmtToSelection({ numFmt: e.target.value });
+    document.getElementById('fmt-merge').onclick = () => {
+      if (!state.selRange) return;
+      saveHistory();
+      const keys = getSelectionKeys();
+      const firstVal = getRawVal(keys[0]);
+      const firstFmt = getCellFmt(keys[0]);
+      keys.forEach(k => setCell(k, '', {}));
+      setCell(keys[0], firstVal, firstFmt);
+      renderGrid();
+    };
+
+    // ── CONTEXT MENU ───────────────────────────────────────────────────
+    function showContextMenu(x, y) {
+      const menu = document.getElementById('ctx-menu');
+      menu.style.left = `${Math.min(x, window.innerWidth - 180)}px`;
+      menu.style.top = `${Math.min(y, window.innerHeight - 300)}px`;
+      menu.classList.add('show');
+    }
+    document.addEventListener('click', () => document.getElementById('ctx-menu').classList.remove('show'));
+    document.getElementById('ctx-copy').onclick = copySelection;
+    document.getElementById('ctx-cut').onclick = cutSelection;
+    document.getElementById('ctx-paste').onclick = pasteClipboard;
+    document.getElementById('ctx-sort-asc').onclick = () => sortByColumn(state.selected.col, 'asc');
+    document.getElementById('ctx-sort-desc').onclick = () => sortByColumn(state.selected.col, 'desc');
+    document.getElementById('ctx-clear').onclick = () => { saveHistory(); getSelectionKeys().forEach(k => setCell(k, '')); renderGrid(); };
+    document.getElementById('ctx-insert-row').onclick = () => insertRow(state.selected.row);
+    document.getElementById('ctx-insert-col').onclick = () => insertCol(state.selected.col);
+    document.getElementById('ctx-del-row').onclick = () => deleteRow(state.selected.row);
+    document.getElementById('ctx-del-col').onclick = () => deleteCol(state.selected.col);
+    document.getElementById('ctx-chart').onclick = () => openChartPanel();
+
+    // ── CHART PANEL ────────────────────────────────────────────────────
+    let currentChartType = 'bar';
+    document.getElementById('btn-chart').onclick = openChartPanel;
+    document.getElementById('mob-chart').onclick = openChartPanel;
+    document.getElementById('mob-chart2')?.addEventListener('click', openChartPanel);
+    document.getElementById('ctx-chart').onclick = openChartPanel;
+    document.getElementById('chart-close').onclick = () => document.getElementById('chart-panel').classList.remove('show');
+    document.getElementById('chart-cancel').onclick = () => document.getElementById('chart-panel').classList.remove('show');
+
+    function openChartPanel() {
+      document.getElementById('mobile-drawer').classList.remove('show');
+      // Set initial active chart type button
+      document.querySelectorAll('#chart-dialog .btn').forEach(b => b.classList.remove('active'));
+      const defaultBtn = document.getElementById('ct-' + currentChartType);
+      if (defaultBtn) defaultBtn.classList.add('active');
+      const keys = getSelectionKeys();
+      let rangeStr = '';
+      if (keys.length > 1) {
+        const refs = keys.map(parseRef).filter(Boolean);
+        const cols = [...new Set(refs.map(r => r.col))];
+        const rows = [...new Set(refs.map(r => r.row))];
+        if (refs.length >= 2) rangeStr = `${keys[0]}:${keys[keys.length - 1]}`;
+      }
+      document.getElementById('chart-range-input').value = rangeStr || cid(state.selected.col, state.selected.row);
+      document.getElementById('chart-title-input').value = '';
+      document.getElementById('chart-panel').classList.add('show');
+      updateChartPreview();
+    }
+
+    // All 15 chart types
+    const ALL_CHART_TYPES = ['bar', 'line', 'area', 'pie', 'donut', 'scatter', 'pareto', 'waterfall', 'radar', 'bubble', 'boxplot', 'heatmap', 'series', 'predict', 'hbar'];
+    ALL_CHART_TYPES.forEach(id => {
+      const el = document.getElementById(`ct-${id}`);
+      if (!el) return;
+      el.addEventListener('click', () => {
+        currentChartType = id;
+        document.querySelectorAll('#chart-dialog .btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        updateChartPreview();
+      });
+    });
+    document.getElementById('chart-range-input').addEventListener('input', updateChartPreview);
+    document.getElementById('chart-title-input')?.addEventListener('input', updateChartPreview);
+    document.getElementById('chart-forecast-pts')?.addEventListener('input', updateChartPreview);
+    document.getElementById('chart-show-labels')?.addEventListener('change', updateChartPreview);
+    document.getElementById('chart-show-grid')?.addEventListener('change', updateChartPreview);
+
+    function updateChartPreview() {
+      const rangeStr = document.getElementById('chart-range-input').value.trim();
+      const title = document.getElementById('chart-title-input').value;
+      const preview = document.getElementById('chart-preview-area');
+      if (!rangeStr) { preview.innerHTML = '<span style="color:var(--txt2);font-size:12px">Enter a range like A1:D5</span>'; return; }
+      const parsed = parseRangeForChart ? parseRangeForChart(rangeStr) : parseRange(rangeStr);
+      const { values, labels, series } = parsed;
+      if (!values.length && (!series || !series.length)) { preview.innerHTML = '<span style="color:var(--txt2);font-size:12px">No numeric data in range</span>'; return; }
+      const fp = +(document.getElementById('chart-forecast-pts')?.value || 0);
+      const showLbl = document.getElementById('chart-show-labels')?.checked;
+      const showGrid = document.getElementById('chart-show-grid')?.checked !== false;
+      const opts = { forecast: fp, labels: showLbl, grid: showGrid };
+      const extraSeries = series && series.length > 1 ? series : [];
+      const svg = buildChart(values, labels, currentChartType, title, opts, 560, 230, extraSeries);
+      preview.innerHTML = svg;
+    }
+
+    document.getElementById('chart-insert').onclick = () => {
+      const rangeStr = document.getElementById('chart-range-input').value.trim();
+      const title = document.getElementById('chart-title-input').value || 'Chart';
+      const parsed = parseRangeForChart ? parseRangeForChart(rangeStr) : parseRange(rangeStr);
+      const { values, labels, series } = parsed;
+      if (!values.length && (!series || !series.length)) { alert('No numeric data found in range.'); return; }
+      const fp = +(document.getElementById('chart-forecast-pts')?.value || 0);
+      const showLbl = document.getElementById('chart-show-labels')?.checked;
+      const showGrid = document.getElementById('chart-show-grid')?.checked !== false;
+      const opts = { forecast: fp, labels: showLbl, grid: showGrid };
+      const extraSeries = series && series.length > 1 ? series : [];
+      insertChartIntoSheet(values, labels, currentChartType, title, opts, extraSeries);
+      document.getElementById('chart-panel').classList.remove('show');
+    };
+
+    function insertChartIntoSheet(values, labels, type, title, opts, extraSeries) {
+      if (!opts) opts = {}; if (!extraSeries) extraSeries = [];
+      const container = document.getElementById('grid-inner');
+      const div = document.createElement('div');
+      div.className = 'chart-embed';
+      div.style.cssText = `left:200px;top:${50 + state.charts.length * 220}px`;
+      const typeLabel = { 'bar': 'Bar', 'hbar': 'Horiz Bar', 'line': 'Line', 'area': 'Area', 'pie': 'Pie', 'donut': 'Donut', 'scatter': 'Scatter', 'pareto': 'Pareto', 'waterfall': 'Waterfall', 'radar': 'Radar', 'bubble': 'Bubble', 'boxplot': 'Box Plot', 'heatmap': 'Heat Map', 'series': 'Multi-Series', 'predict': 'Predictive' }[type] || type;
+      div.innerHTML = `
+    <div class="chart-title">◫ ${escHtml(title)} <span style="font-size:9px;color:var(--txt3)">[${typeLabel}]</span></div>
+    <button class="chart-close" title="Remove chart">×</button>
+    ${buildChart(values, labels, type, title, opts, 300, 185, extraSeries)}
+  `;
+      div.querySelector('.chart-close').onclick = () => div.remove();
+      makeDraggable(div);
+      container.appendChild(div);
+      state.charts.push({ title, type, values, labels, opts, extraSeries });
+    }
+
+    function makeDraggable(el) {
+      let startX, startY, startL, startT;
+      const header = el.querySelector('.chart-title');
+      const dragStart = (e) => {
+        const src = e.touches ? e.touches[0] : e;
+        startX = src.clientX; startY = src.clientY;
+        startL = parseInt(el.style.left || 0); startT = parseInt(el.style.top || 0);
+        e.preventDefault();
+      };
+      const drag = (e) => {
+        const src = e.touches ? e.touches[0] : e;
+        el.style.left = `${startL + (src.clientX - startX)}px`;
+        el.style.top = `${startT + (src.clientY - startY)}px`;
+      };
+      const dragEnd = () => { document.removeEventListener('mousemove', drag); document.removeEventListener('mouseup', dragEnd); document.removeEventListener('touchmove', drag); document.removeEventListener('touchend', dragEnd); };
+      header.addEventListener('mousedown', e => { dragStart(e); document.addEventListener('mousemove', drag); document.addEventListener('mouseup', dragEnd); });
+      header.addEventListener('touchstart', e => { dragStart(e); document.addEventListener('touchmove', drag, { passive: false }); document.addEventListener('touchend', dragEnd); }, { passive: false });
+    }
+
+    // ── AI AGENT ──────────────────────────────────────────────────────
+    let aiEngine = null, aiLoaded = false, aiLoading = false, aiStreaming = false;
+    const AI_CHIPS = [
+      'Analyze this data',
+      'Write SUM formula for column B',
+      'Sort by Total descending',
+      'Create a bar chart of Q1-Q4',
+      'Add growth % formula',
+      'Find max and min values',
+      'Highlight cells above average',
+      'Fill in a data series',
+    ];
+
+    function syncAIDots() {
+      ['ai-dot', 'ai-dot-mob'].forEach(id => {
+        const d = document.getElementById(id);
+        if (!d) return;
+        d.className = 'ai-status-dot' + (aiLoaded ? ' ready' : aiLoading ? ' thinking' : '');
+      });
+    }
+
+    function addMessage(role, html, isTool = false) {
+      const cls = isTool ? 'tool-result' : role;
+      const containers = ['ai-messages', 'ai-messages-mob'];
+      containers.forEach(cid_ => {
+        const c = document.getElementById(cid_);
+        if (!c) return;
+        const div = document.createElement('div');
+        div.className = `ai-msg ${cls}`;
+        div.innerHTML = html;
+        c.appendChild(div);
+        c.scrollTop = c.scrollHeight;
+      });
+      return document.querySelectorAll('.ai-messages-mob .ai-msg:last-child, #ai-messages .ai-msg:last-child');
+    }
+
+    function renderAIChips() {
+      const chips = AI_CHIPS.map(t => `<span class="ai-chip">${escHtml(t)}</span>`).join('');
+      ['ai-chips', 'ai-chips-mob'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = chips;
+      });
+      document.querySelectorAll('.ai-chip').forEach(chip => {
+        chip.onclick = () => {
+          const inp = document.getElementById('ai-input') || document.getElementById('ai-input-mob');
+          if (inp) { inp.value = chip.textContent; sendAIMessage(); }
+        };
+      });
+    }
+
+    function getSheetContext() {
+      const sh = getSheet();
+      const sample = [];
+      for (let r = 1; r <= Math.min(10, TOTAL_ROWS); r++) {
+        const row = {}; let hasData = false;
+        COLS.slice(0, 8).forEach(c => { const v = getDisplayVal(cid(c, r), sh); if (v) { row[cid(c, r)] = v; hasData = true; } });
+        if (hasData) sample.push(row);
+      }
+      const totalCells = Object.keys(sh.cells).filter(k => sh.cells[k]?.v !== undefined && sh.cells[k]?.v !== '').length;
+      return { sheetName: sh.name, activeCell: selectedKey(), selection: getSelectionKeys().join(','), sampleData: JSON.stringify(sample), totalCells };
+    }
+
+    // ── AI TOOL EXECUTION ─────────────────────────────────────────────
+    function executeAITools(text) {
+      const results = [];
+      // Tool pattern: <<TOOL:name|arg1|arg2|...>>
+      const toolRe = /<<TOOL:(\w+)\|?([^>]*)>>/gi;
+      let match;
+      while ((match = toolRe.exec(text)) !== null) {
+        const toolName = match[1].toUpperCase();
+        const args = match[2].split('|').map(a => a.trim());
+        try {
+          const result = runTool(toolName, args);
+          if (result !== null) results.push({ tool: toolName, args, result });
+        } catch (e) { results.push({ tool: toolName, args, result: `Error: ${e.message}` }); }
+      }
+      if (results.length) {
+        renderGrid();
+        const resultHtml = results.map(r => `✅ <b>${r.tool}</b>(${r.args.join(', ')}) → ${escHtml(String(r.result))}`).join('<br>');
+        addMessage('tool', resultHtml, true);
+      }
+      return results;
+    }
+
+    function runTool(name, args) {
+      switch (name) {
+        case 'WRITE_CELL': {
+          // WRITE_CELL|A1|value
+          const [ref, val] = args;
+          if (!ref || val === undefined) return 'Missing args';
+          saveHistory(); setCell(ref.toUpperCase(), val);
+          return `Set ${ref}="${val}"`;
+        }
+        case 'WRITE_RANGE': {
+          // WRITE_RANGE|A1:A5|val1,val2,...
+          const [rangeStr, valsStr] = args;
+          const vals = (valsStr || '').split(';');
+          const keys = parseRangeKeys(rangeStr);
+          saveHistory();
+          keys.forEach((k, i) => { if (vals[i] !== undefined) setCell(k, vals[i]); });
+          return `Wrote ${keys.length} cells`;
+        }
+        case 'FORMULA': {
+          // FORMULA|A1|=SUM(B1:B5)
+          const [ref, formula] = args;
+          if (!ref || !formula) return 'Missing args';
+          saveHistory(); setCell(ref.toUpperCase(), formula);
+          const result = getDisplayVal(ref.toUpperCase());
+          return `Formula in ${ref}: result=${result}`;
+        }
+        case 'FILL_COLUMN': {
+          // FILL_COLUMN|B|formula_or_value|startRow|endRow
+          const [col, val, sr = '2', er = '10'] = args;
+          saveHistory();
+          for (let r = parseInt(sr); r <= parseInt(er); r++)setCell(cid(col.toUpperCase(), r), val);
+          return `Filled ${col}${sr}:${col}${er}`;
+        }
+        case 'FILL_ROW': {
+          const [row, val, sc = 'A', ec = 'G'] = args;
+          saveHistory();
+          const c1 = COLS.indexOf(sc.toUpperCase()), c2 = COLS.indexOf(ec.toUpperCase());
+          for (let c = c1; c <= c2; c++)setCell(cid(COLS[c], parseInt(row)), val);
+          return `Filled row ${row}`;
+        }
+        case 'FORMAT': {
+          // FORMAT|A1:A5|bold=1,color=#00ffcc,bg=#0d1e35
+          const [rangeStr, fmtStr] = args;
+          const keys = parseRangeKeys(rangeStr);
+          const fmtPatch = {};
+          (fmtStr || '').split(',').forEach(pair => {
+            const [k, v] = pair.split('=');
+            if (!k || v === undefined) return;
+            const kk = k.trim();
+            fmtPatch[kk] = v.trim() === '1' ? true : v.trim() === '0' ? false : v.trim();
+          });
+          saveHistory(); keys.forEach(k => setCell(k, undefined, fmtPatch));
+          return `Formatted ${keys.length} cells`;
+        }
+        case 'SORT': {
+          // SORT|B|desc
+          const [col, dir = 'asc'] = args;
+          sortByColumn(col.toUpperCase(), dir.toLowerCase());
+          return `Sorted by ${col} ${dir}`;
+        }
+        case 'CHART': {
+          // CHART|type|A1:D5|Title
+          const [type, rangeStr, title = 'Chart'] = args;
+          const parsed = parseRangeForChart ? parseRangeForChart(rangeStr) : parseRange(rangeStr);
+          const { values, labels, series } = parsed;
+          if (!values.length && (!series || !series.length)) return 'No data in range';
+          const extraSeries = series && series.length > 1 ? series : [];
+          insertChartIntoSheet(values, labels, type || 'bar', title, { grid: true, labels: false, forecast: 0 }, extraSeries);
+          return `Inserted ${type} chart from ${rangeStr}`;
+        }
+        case 'READ_RANGE': {
+          // READ_RANGE|A1:D5
+          const [rangeStr] = args;
+          const keys = parseRangeKeys(rangeStr);
+          const data = keys.map(k => `${k}:${getDisplayVal(k)}`).join(', ');
+          return data || '(empty)';
+        }
+        case 'READ_CELL': {
+          const [ref] = args;
+          return `${ref}="${getDisplayVal(ref.toUpperCase())}" (raw: "${getRawVal(ref.toUpperCase())}")`;
+        }
+        case 'CLEAR': {
+          const keys = parseRangeKeys(args[0]);
+          saveHistory(); keys.forEach(k => setCell(k, ''));
+          return `Cleared ${keys.length} cells`;
+        }
+        case 'SUM_RANGE': {
+          const { values } = parseRange(args[0]);
+          const sum = values.reduce((a, b) => a + b, 0);
+          return `Sum of ${args[0]} = ${sum.toFixed(4)}`;
+        }
+        case 'ANALYZE': {
+          const { values } = parseRange(args[0] || 'B2:E6');
+          if (!values.length) return 'No numeric data';
+          const sum = values.reduce((a, b) => a + b, 0);
+          const avg = sum / values.length;
+          const max = Math.max(...values);
+          const min = Math.min(...values);
+          const std = FN.STDEV(values);
+          return `n=${values.length}, sum=${sum.toFixed(2)}, avg=${avg.toFixed(2)}, max=${max}, min=${min}, stdev=${std.toFixed(2)}`;
+        }
+        case 'INSERT_ROW': { insertRow(parseInt(args[0]) || state.selected.row); return `Inserted row at ${args[0]}`; }
+        case 'DELETE_ROW': { deleteRow(parseInt(args[0]) || state.selected.row); return `Deleted row ${args[0]}`; }
+        case 'INSERT_COL': { insertCol(args[0] || state.selected.col); return `Inserted col at ${args[0]}`; }
+        case 'DELETE_COL': { deleteCol(args[0] || state.selected.col); return `Deleted col ${args[0]}`; }
+        case 'NAVIGATE': {
+          const ref = parseRef(args[0]);
+          if (ref) { state.selected = ref; state.selRange = null; scrollCellIntoView(ref.col, ref.row); renderGrid(); }
+          return `Navigated to ${args[0]}`;
+        }
+        case 'SELECT': {
+          const m = args[0].match(/^([A-Z]+\d+):([A-Z]+\d+)$/i);
+          if (m) {
+            const a = parseRef(m[1]), b = parseRef(m[2]);
+            if (a && b) { state.selected = a; state.selRange = { start: a, end: b }; renderGrid(); }
+          }
+          return `Selected ${args[0]}`;
+        }
+        case 'FILL_SERIES': {
+          // FILL_SERIES|A2|A10|1|10 (start ref, end ref, start val, step)
+          const [startRef, endRef, startVal = '1', step = '1'] = args;
+          const startR = parseRef(startRef), endR = parseRef(endRef);
+          if (!startR || !endR) return 'Invalid range';
+          saveHistory();
+          let v = parseFloat(startVal), s = parseFloat(step);
+          for (let r = startR.row; r <= endR.row; r++) {
+            setCell(cid(startR.col, r), String(v)); v += s;
+          }
+          return `Filled series ${startRef}:${endRef}`;
+        }
+        case 'AUTOSUM': { autoSum(); return 'AutoSum applied'; }
+        case 'THEME': {
+          // THEME|dark or THEME|light
+          return 'Theme switching not applicable in tool mode';
+        }
+        default: return `Unknown tool: ${name}`;
+      }
+    }
+
+    function parseRangeKeys(rangeStr) {
+      if (!rangeStr) return [selectedKey()];
+      const single = parseRef(rangeStr);
+      if (single) return [cid(single.col, single.row)];
+      const m = rangeStr.match(/^([A-Z]+\d+):([A-Z]+\d+)$/i);
+      if (!m) return [rangeStr];
+      const a = parseRef(m[1]), b = parseRef(m[2]);
+      if (!a || !b) return [];
+      const c1 = COLS.indexOf(a.col), c2 = COLS.indexOf(b.col);
+      const r1 = Math.min(a.row, b.row), r2 = Math.max(a.row, b.row);
+      const out = [];
+      for (let r = r1; r <= r2; r++)for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++)out.push(cid(COLS[c], r));
+      return out;
+    }
+
+    // ── AI SYSTEM PROMPT ───────────────────────────────────────────────
+    function buildSystemPrompt(ctx) {
+      // Compact prompt — stays well under 400 tokens to prevent overflow
+      const sample = ctx.sampleData ? JSON.parse(ctx.sampleData).slice(0, 6).map(r => Object.entries(r).slice(0, 5).map(([k, v]) => `${k}:${v}`).join(' ')).join(' | ') : '';
+      return `SheetCraft AI. Sheet="${ctx.sheetName}" Cell=${ctx.activeCell} Sel=${ctx.selection}
+Data: ${sample}
+
+Tools (use in responses):
+<<TOOL:WRITE_CELL|A1|val>> <<TOOL:FORMULA|A1|=SUM(B2:B10)>> <<TOOL:FORMAT|A1:B5|bold=1,color=#00ffcc>>
+<<TOOL:SORT|B|desc>> <<TOOL:CHART|bar|B1:E6|Title>> <<TOOL:ANALYZE|B2:E6>>
+<<TOOL:CLEAR|A1:C5>> <<TOOL:FILL_COLUMN|B|val|2|10>> <<TOOL:FILL_SERIES|A2|A20|1|2>>
+<<TOOL:INSERT_ROW|3>> <<TOOL:DELETE_ROW|3>> <<TOOL:NAVIGATE|D5>> <<TOOL:AUTOSUM>>
+
+Charts: bar,line,area,pie,scatter,pareto,waterfall,predict,series,donut,radar,bubble,boxplot,heatmap
+Formats: bold,italic,underline,align(left/center/right),color,bg,fontSize,numFmt(currency/percent/comma/fixed2)
+Formulas: SUM,AVERAGE,IF,MAX,MIN,STDEV,MEDIAN,ROUND,COUNT,FORECAST,GROWTH,SLOPE,PMT,NPV,TODAY,CONCAT+50 more
+
+Use tools when asked to DO something. Be concise.`;
+    }
+
+    // ── RULE-BASED FALLBACK ────────────────────────────────────────────
+    function fallbackAI(msg) {
+      const low = msg.toLowerCase();
+      const sk = selectedKey(), selR = () => { const k = getSelectionKeys(); return k.length > 1 ? `${k[0]}:${k[k.length - 1]}` : 'B2:E6'; };
+      if (low.includes('sum') && (low.includes('formula') || low.includes('write') || low.includes('add')))
+        return { text: "SUM formula:", tools: [`<<TOOL:FORMULA|${sk}|=SUM(B2:B10)>>`] };
+      if (low.includes('average') || low.includes('mean'))
+        return { text: "AVERAGE formula:", tools: [`<<TOOL:FORMULA|${sk}|=AVERAGE(B2:B10)>>`] };
+      if (low.includes('sort') && low.includes('desc'))
+        return { text: "Sorting descending:", tools: [`<<TOOL:SORT|${state.selected.col}|desc>>`] };
+      if (low.includes('sort'))
+        return { text: "Sorting ascending:", tools: [`<<TOOL:SORT|${state.selected.col}|asc>>`] };
+      if (low.includes('forecast') || low.includes('predict'))
+        return { text: "Predictive chart with trend + forecast:", tools: [`<<TOOL:CHART|predict|${selR()}|Predictive Forecast>>`] };
+      if (low.includes('pareto'))
+        return { text: "Pareto chart (80/20):", tools: [`<<TOOL:CHART|pareto|${selR()}|Pareto Analysis>>`] };
+      if (low.includes('waterfall'))
+        return { text: "Waterfall chart:", tools: [`<<TOOL:CHART|waterfall|${selR()}|Waterfall>>`] };
+      if (low.includes('radar') || low.includes('spider'))
+        return { text: "Radar chart:", tools: [`<<TOOL:CHART|radar|${selR()}|Radar>>`] };
+      if (low.includes('donut'))
+        return { text: "Donut chart:", tools: [`<<TOOL:CHART|donut|${selR()}|Donut>>`] };
+      if (low.includes('bubble'))
+        return { text: "Bubble chart:", tools: [`<<TOOL:CHART|bubble|${selR()}|Bubble>>`] };
+      if (low.includes('heat'))
+        return { text: "Heat Map:", tools: [`<<TOOL:CHART|heatmap|${selR()}|Heat Map>>`] };
+      if (low.includes('box plot') || low.includes('boxplot'))
+        return { text: "Box Plot:", tools: [`<<TOOL:CHART|boxplot|${selR()}|Box Plot>>`] };
+      if (low.includes('multi') || low.includes('series') || low.includes('grouped'))
+        return { text: "Multi-Series chart:", tools: [`<<TOOL:CHART|series|${selR()}|Multi-Series>>`] };
+      if (low.includes('horizontal') || low.includes('hbar'))
+        return { text: "Horizontal Bar chart:", tools: [`<<TOOL:CHART|hbar|${selR()}|Horizontal Bar>>`] };
+      if (low.includes('chart') || low.includes('graph')) {
+        const type = low.includes('pie') ? 'pie' : low.includes('line') ? 'line' : low.includes('area') ? 'area' : low.includes('scatter') ? 'scatter' : 'bar';
+        return { text: `${type} chart:`, tools: [`<<TOOL:CHART|${type}|${selR()}|Chart>>`] };
+      }
+      if (low.includes('analyz') || low.includes('stat'))
+        return { text: "Analyzing:", tools: [`<<TOOL:ANALYZE|${selR()}>`] };
+      if (low.includes('max')) return { text: "MAX:", tools: [`<<TOOL:FORMULA|${sk}|=MAX(B2:E6)>>`] };
+      if (low.includes('min')) return { text: "MIN:", tools: [`<<TOOL:FORMULA|${sk}|=MIN(B2:E6)>>`] };
+      if (low.includes('stdev')) return { text: "Std Dev:", tools: [`<<TOOL:FORMULA|${sk}|=STDEV(B2:E6)>>`] };
+      if (low.includes('median')) return { text: "Median:", tools: [`<<TOOL:FORMULA|${sk}|=MEDIAN(B2:E6)>>`] };
+      if (low.includes('count')) return { text: "Count:", tools: [`<<TOOL:FORMULA|${sk}|=COUNT(B2:E6)>>`] };
+      if (low.includes('bold')) return { text: "Bold:", tools: [`<<TOOL:FORMAT|${getSelectionKeys().join(',')}|bold=1>>`] };
+      if (low.includes('clear')) return { text: "Clearing:", tools: [`<<TOOL:CLEAR|${getSelectionKeys().join(',')}>`] };
+      if (low.includes('today')) return { text: "Today:", tools: [`<<TOOL:FORMULA|${sk}|=TODAY()>>`] };
+      if (low.includes('growth')) return { text: "Growth %:", tools: [`<<TOOL:FORMULA|${sk}|=ROUND((E2-B2)/B2*100,2)>>`] };
+      if (low.includes('sumif')) return { text: "SUMIF:", tools: [`<<TOOL:FORMULA|${sk}|=SUMIF(A2:A10,"x",B2:B10)>>`] };
+      return { text: "I support **15 chart types**: bar, line, area, pie, donut, scatter, pareto, waterfall, radar, bubble, boxplot, heatmap, multi-series, predictive, horizontal bar.\n\nPlus 60+ formulas, sorting, formatting, and data analysis. Load TinyLlama AI for natural language commands!", tools: [] };
+    }
+
+    async function sendAIMessage() {
+      const desktopInp = document.getElementById('ai-input');
+      const mobileInp = document.getElementById('ai-input-mob');
+      const activeInp = document.activeElement === mobileInp ? mobileInp : desktopInp;
+      const msg = (activeInp?.value || desktopInp?.value || '').trim();
+      if (!msg || aiStreaming) return;
+      desktopInp.value = ''; if (mobileInp) mobileInp.value = '';
+
+      addMessage('user', escHtml(msg));
+      aiStreaming = true;
+      document.getElementById('ai-send').disabled = true;
+      if (document.getElementById('ai-send-mob')) document.getElementById('ai-send-mob').disabled = true;
+
+      const ctx = getSheetContext();
+
+      if (!aiLoaded) {
+        // Fallback
+        const { text, tools } = fallbackAI(msg);
+        const combined = text + (tools.length ? '\n' + tools.join('\n') : '');
+        const formatted = formatAIText(text);
+        addMessage('assistant', formatted);
+        if (tools.length) tools.forEach(t => executeAITools(t));
+        if (tools.length) renderGrid();
+        aiStreaming = false;
+        document.getElementById('ai-send').disabled = false;
+        if (document.getElementById('ai-send-mob')) document.getElementById('ai-send-mob').disabled = false;
+        return;
+      }
+
+      // TinyLlama via WebLLM — compact prompt + strict token limit to prevent overflow
+      const attemptAI = async (userMsg, retryMode = false) => {
+        const sysContent = retryMode
+          ? `SheetCraft AI. Cell=${selectedKey()}. Use <<TOOL:CHART|type|range|title>> or <<TOOL:FORMULA|cell|=formula>> etc. Be very brief.`
+          : buildSystemPrompt(ctx);
+        const msgs = [
+          { role: 'system', content: sysContent },
+          { role: 'user', content: userMsg.slice(0, 250) },
+        ];
+        let full = '';
+        const placeholders = addMessage('assistant', '▋');
+        const stream = await aiEngine.chat.completions.create({
+          messages: msgs,
+          max_tokens: 280,      // strict limit — prevents context overflow
+          temperature: 0.55,
+          stream: true,
+        });
+        for await (const chunk of stream) {
+          full += (chunk.choices[0]?.delta?.content || '');
+          placeholders.forEach(p => { if (p) p.innerHTML = formatAIText(full + '▋'); });
+          ['ai-messages', 'ai-messages-mob'].forEach(cid_ => {
+            const c = document.getElementById(cid_); if (c) c.scrollTop = c.scrollHeight;
+          });
+        }
+        placeholders.forEach(p => { if (p) p.innerHTML = formatAIText(full); });
+        executeAITools(full);
+      };
+      try {
+        await attemptAI(msg, false);
+      } catch (e) {
+        const errStr = String(e.message || e).toLowerCase();
+        if (errStr.includes('token') || errStr.includes('context') || errStr.includes('exceed') || errStr.includes('length') || errStr.includes('size')) {
+          // Retry with minimal context
+          try {
+            addMessage('assistant', '↺ Retrying with compact context...');
+            await attemptAI(msg, true);
+          } catch (e2) {
+            // Final fallback to rule-based
+            const { text: ft, tools: ftools } = fallbackAI(msg);
+            addMessage('assistant', formatAIText(ft));
+            if (ftools.length) ftools.forEach(t => executeAITools(t));
+            renderGrid();
+          }
+        } else {
+          addMessage('assistant', `⚠️ ${escHtml(String(e.message || e).slice(0, 120))}<br><small>Falling back to offline mode</small>`);
+          const { text: ft, tools: ftools } = fallbackAI(msg);
+          addMessage('assistant', formatAIText(ft));
+          if (ftools.length) ftools.forEach(t => executeAITools(t));
+          renderGrid();
+        }
+      }
+      aiStreaming = false;
+      document.getElementById('ai-send').disabled = false;
+      if (document.getElementById('ai-send-mob')) document.getElementById('ai-send-mob').disabled = false;
+    }
+
+    function formatAIText(text) {
+      return escHtml(text)
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/&lt;&lt;TOOL:[^&]*&gt;&gt;/g, m => `<code style="color:var(--teal2)">${m}</code>`)
+        .replace(/\n/g, '<br>');
+    }
+
+    // Load TinyLlama
+    async function loadTinyLlama() {
+      if (aiLoading || aiLoaded) return;
+      aiLoading = true; syncAIDots();
+      const loadBar = document.getElementById('ai-load-bar');
+      loadBar.style.display = 'block';
+      addMessage('assistant', '🔄 Loading <strong>TinyLlama-1.1B</strong> via WebLLM...<br><small>First load ~600MB — cached after. Requires Chrome 113+ with WebGPU.</small>');
+
+      try {
+        const webllm = await import('https://esm.run/@mlc-ai/web-llm');
+        aiEngine = new webllm.MLCEngine();
+        aiEngine.setInitProgressCallback((rpt) => {
+          const pct = parseInt((rpt.progress || 0) * 100);
+          document.getElementById('ai-load-fill').style.width = pct + '%';
+          document.getElementById('ai-load-text').textContent = rpt.text || 'Loading...';
+        });
+        await aiEngine.reload('TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC-1k');
+        aiLoaded = true; aiLoading = false;
+        loadBar.style.display = 'none'; syncAIDots();
+        addMessage('assistant', '✅ <strong>TinyLlama loaded!</strong> Running 100% locally — no data leaves your device.<br><br>I can now:<br>• Write and explain formulas<br>• Create charts from your data<br>• Sort and analyze data<br>• Apply formatting<br>• Answer any spreadsheet question!');
+      } catch (e) {
+        aiLoading = false; loadBar.style.display = 'none'; syncAIDots();
+        addMessage('assistant', `⚠️ WebLLM failed: ${escHtml(e.message)}<br><br>Requires <strong>Chrome 113+</strong> with a <strong>WebGPU-capable GPU</strong>.<br><br>I'm still here in <strong>offline mode</strong> — ask me about formulas and I'll use smart rules!`);
+      }
+    }
+
+    // ── AI PANEL TOGGLE ────────────────────────────────────────────────
+    document.getElementById('ai-toggle').onclick = () => {
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile) {
+        const panel = document.getElementById('mobile-ai-panel');
+        panel.classList.toggle('show');
+        if (panel.classList.contains('show') && !aiLoaded && !aiLoading) loadTinyLlama();
+      } else {
+        const panel = document.getElementById('ai-panel');
+        panel.classList.toggle('hidden');
+        if (!panel.classList.contains('hidden') && !aiLoaded && !aiLoading) loadTinyLlama();
+      }
+    };
+    document.getElementById('ai-close').onclick = () => document.getElementById('ai-panel').classList.add('hidden');
+    document.getElementById('mob-ai-close').onclick = () => document.getElementById('mobile-ai-panel').classList.remove('show');
+    document.getElementById('ai-send').onclick = sendAIMessage;
+    document.getElementById('ai-send-mob').onclick = sendAIMessage;
+    ['ai-input', 'ai-input-mob'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAIMessage(); } });
+    });
+
+    // ── MOBILE BUTTONS ─────────────────────────────────────────────────
+    document.getElementById('mob-format').onclick = () => {
+      const drawer = document.getElementById('mobile-drawer');
+      drawer.classList.toggle('show');
+    };
+    document.getElementById('mobile-fmt-btn').onclick = () => {
+      const drawer = document.getElementById('mobile-drawer');
+      drawer.classList.toggle('show');
+    };
+    document.getElementById('drawer-close').onclick = () => document.getElementById('mobile-drawer').classList.remove('show');
+    document.getElementById('mob-ai').onclick = () => {
+      document.getElementById('mobile-ai-panel').classList.toggle('show');
+      if (document.getElementById('mobile-ai-panel').classList.contains('show') && !aiLoaded && !aiLoading) loadTinyLlama();
+    };
+    document.getElementById('mob-formula').onclick = () => {
+      document.getElementById('formula-input').focus();
+      document.getElementById('formula-input').select();
+    };
+    document.getElementById('mob-chart').onclick = openChartPanel;
+    document.getElementById('mob-more').onclick = () => {
+      const menu = document.getElementById('ctx-menu');
+      menu.style.left = '50%'; menu.style.top = 'auto'; menu.style.bottom = '64px'; menu.style.transform = 'translateX(-50%)';
+      menu.classList.add('show');
+    };
+    // Mobile Selection Tool
+    document.getElementById('mob-sel-tool').onclick = () => {
+      toggleSelTool();
+      document.getElementById('mob-sel-tool').classList.toggle('active', selToolActive);
+    };
+    // Mobile format buttons
+    ['mob-bold', 'mob-italic', 'mob-underline'].forEach(id => {
+      const map = { 'mob-bold': 'bold', 'mob-italic': 'italic', 'mob-underline': 'underline' };
+      document.getElementById(id).onclick = () => applyFmtToSelection({ [map[id]]: !getCellFmt(selectedKey())[map[id]] });
+    });
+    ['mob-align-l', 'mob-align-c', 'mob-align-r'].forEach(id => {
+      const map = { 'mob-align-l': 'left', 'mob-align-c': 'center', 'mob-align-r': 'right' };
+      document.getElementById(id).onclick = () => applyFmtToSelection({ align: map[id] });
+    });
+    document.getElementById('mob-font-size').onchange = e => applyFmtToSelection({ fontSize: parseInt(e.target.value) });
+    document.getElementById('mob-color').oninput = e => applyFmtToSelection({ color: e.target.value });
+    document.getElementById('mob-bg').oninput = e => applyFmtToSelection({ bg: e.target.value });
+    document.getElementById('mob-num-fmt').onchange = e => applyFmtToSelection({ numFmt: e.target.value });
+    document.getElementById('mob-sum').onclick = autoSum;
+    // Mobile Sort
+    document.getElementById('mob-sort-asc').onclick = () => { sortByColumn(state.selected.col, 'asc'); document.getElementById('mobile-drawer').classList.remove('show'); };
+    document.getElementById('mob-sort-desc').onclick = () => { sortByColumn(state.selected.col, 'desc'); document.getElementById('mobile-drawer').classList.remove('show'); };
+    // Mobile Find
+    document.getElementById('mob-find').onclick = () => { document.getElementById('mobile-drawer').classList.remove('show'); document.getElementById('find-modal').classList.add('show'); };
+    // Mobile Go To
+    document.getElementById('mob-goto2').onclick = () => { document.getElementById('mobile-drawer').classList.remove('show'); openGoTo(); };
+    // Mobile Freeze
+    document.getElementById('mob-freeze2').onclick = () => { document.getElementById('mobile-drawer').classList.remove('show'); document.getElementById('btn-freeze')?.click(); };
+    // Mobile Rows/Cols
+    document.getElementById('mob-ins-row').onclick = () => { saveHistory(); const sh = getSheet(); const newCells = {}; Object.entries(sh.cells).forEach(([k, v]) => { const ref = parseRef(k); if (!ref) return; if (ref.row >= state.selected.row) { newCells[cid(ref.col, ref.row + 1)] = v; } else { newCells[k] = v; } }); sh.cells = newCells; renderGrid(); };
+    document.getElementById('mob-ins-col').onclick = () => { saveHistory(); const sh = getSheet(); const ci = COLS.indexOf(state.selected.col); const newCells = {}; Object.entries(sh.cells).forEach(([k, v]) => { const ref = parseRef(k); if (!ref) return; const cIdx = COLS.indexOf(ref.col); if (cIdx >= ci) { if (cIdx + 1 < TOTAL_COLS) newCells[cid(COLS[cIdx + 1], ref.row)] = v; } else { newCells[k] = v; } }); sh.cells = newCells; renderGrid(); };
+    document.getElementById('mob-del-row').onclick = () => { saveHistory(); const sh = getSheet(); const newCells = {}; Object.entries(sh.cells).forEach(([k, v]) => { const ref = parseRef(k); if (!ref || ref.row === state.selected.row) return; if (ref.row > state.selected.row) newCells[cid(ref.col, ref.row - 1)] = v; else newCells[k] = v; }); sh.cells = newCells; renderGrid(); };
+    document.getElementById('mob-del-col').onclick = () => { saveHistory(); const sh = getSheet(); const ci = COLS.indexOf(state.selected.col); const newCells = {}; Object.entries(sh.cells).forEach(([k, v]) => { const ref = parseRef(k); if (!ref) return; const cIdx = COLS.indexOf(ref.col); if (cIdx === ci) return; if (cIdx > ci) newCells[cid(COLS[cIdx - 1], ref.row)] = v; else newCells[k] = v; }); sh.cells = newCells; renderGrid(); };
+    // Mobile Undo/Redo
+    document.getElementById('mob-undo').onclick = undoAction;
+    document.getElementById('mob-redo').onclick = redoAction;
+    // Mobile Import/Export
+    document.getElementById('mob-import').onclick = () => { document.getElementById('mobile-drawer').classList.remove('show'); document.getElementById('file-input').click(); };
+    document.getElementById('mob-export-csv').onclick = () => { exportCSV(); document.getElementById('mobile-drawer').classList.remove('show'); };
+    document.getElementById('mob-export-xlsx').onclick = () => { exportXLSX(); document.getElementById('mobile-drawer').classList.remove('show'); };
+
+    // Handle mobile-specific visibility
+    const mobileCheck = () => {
+      const mob = window.innerWidth <= 768;
+      document.getElementById('mobile-fmt-btn').style.display = mob ? '' : 'none';
+    };
+    window.addEventListener('resize', mobileCheck); mobileCheck();
+
+    // Keep mob-sel-tool state in sync
+    const _origToggleSel = toggleSelTool;
+    function syncMobSelBtn() {
+      const btn = document.getElementById('mob-sel-tool');
+      if (btn) btn.classList.toggle('active', selToolActive);
+    }
+
+    // ── INITIAL RENDER ─────────────────────────────────────────────────
+    renderTabs(); renderGrid(); renderAIChips();
+
+    // Welcome AI message
+    addMessage('assistant',
+      '👋 Welcome to <strong>SheetCraft v5</strong>!<br><br>' +
+      '🆕 <b>New in v5:</b><br>' +
+      '• <b>📊 XLSX Import/Export</b> — import &amp; export real Excel files (↓ XLSX button or Format drawer on mobile)<br>' +
+      '• <b>📱 Full Mobile Feature Parity</b> — every desktop feature now in the Format &amp; Tools drawer<br>' +
+      '• <b>⊡ Selection Mode on Mobile</b> — tap "Select" in bottom bar, then drag to rubber-band select<br>' +
+      '• <b>🔧 Mobile: Undo/Redo, Sort, Find, Go To, Insert/Delete Rows &amp; Cols</b><br><br>' +
+      '💡 <b>Mobile Tips:</b><br>' +
+      '• Tap <b>Format</b> in the bottom bar for all tools<br>' +
+      '• Tap <b>Select</b> to enable rubber-band selection<br>' +
+      '• Import CSV or XLSX by tapping Format → Import<br><br>' +
+      'Click <strong>Load AI</strong> to start TinyLlama, or ask me anything now!'
+    );
+
+    // Keyboard shortcut hint
+    document.addEventListener('keydown', e => {
+      if (e.ctrlKey && e.key === '/') {
+        {
+          e.preventDefault();
+          addMessage('assistant', '<b>Keyboard Shortcuts:</b><br>' +
+            'Ctrl+C/X/V: Copy/Cut/Paste<br>' +
+            'Ctrl+Z/Y: Undo/Redo<br>' +
+            'Ctrl+F: Find & Replace<br>' +
+            'Ctrl+D/R: Fill Down/Right<br>' +
+            'Ctrl+S: Export CSV<br>' +
+            'Ctrl+A: Select All<br>' +
+            'S: Toggle Selection Tool<br>' +
+            'Ctrl+G: Go To Range<br>' +
+            'Delete: Clear cells<br>' +
+            'Enter: Edit cell<br>' +
+            'Tab: Move right<br>' +
+            'Arrow keys: Navigate');
+          document.getElementById('ai-panel').classList.remove('hidden');
+        }
+      }
+    });
+
+    // ── CONDITIONAL FORMATTING ENGINE ──
+    const condFormats = []; // { range:{startCol,startRow,endCol,endRow}, rule:{type,value,value2}, style:{color,bg} }
+
+    function addCondFormat(rangeStr, ruleType, value, style, value2) {
+      const parsed = parseRange(rangeStr);
+      if (!parsed) return;
+      condFormats.push({ range: parsed, rule: { type: ruleType, value, value2 }, style });
+      renderGrid();
+    }
+
+    function removeCondFormat(index) {
+      condFormats.splice(index, 1);
+      renderGrid();
+    }
+
+    function evalConditionalFormat(key, dispVal, sh) {
+      const ref = parseRef(key);
+      if (!ref) return {};
+      let result = {};
+      for (const cf of condFormats) {
+        const { range, rule, style } = cf;
+        const colIdx = ref.col.charCodeAt(0) - 65;
+        if (colIdx < range.startCol || colIdx > range.endCol) continue;
+        if (ref.row < range.startRow || ref.row > range.endRow) continue;
+        const num = parseFloat(dispVal);
+        const isNum = !isNaN(num);
+        let match = false;
+        switch (rule.type) {
+          case 'greater': match = isNum && num > parseFloat(rule.value); break;
+          case 'less': match = isNum && num < parseFloat(rule.value); break;
+          case 'equal': match = String(dispVal) === String(rule.value); break;
+          case 'not-blank': match = dispVal !== '' && dispVal != null; break;
+          case 'between': match = isNum && num >= parseFloat(rule.value) && num <= parseFloat(rule.value2); break;
+          case 'contains': match = String(dispVal).toLowerCase().includes(String(rule.value).toLowerCase()); break;
+          case 'negative': match = isNum && num < 0; break;
+          case 'positive': match = isNum && num > 0; break;
+        }
+        if (match) Object.assign(result, style);
+      }
+      return result;
+    }
+
+    function parseRange(rangeStr) {
+      const m = rangeStr.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i);
+      if (!m) return null;
+      return {
+        startCol: m[1].toUpperCase().charCodeAt(0) - 65,
+        startRow: parseInt(m[2]),
+        endCol: m[3].toUpperCase().charCodeAt(0) - 65,
+        endRow: parseInt(m[4])
+      };
+    }
+
+    // Quick conditional format presets
+    function condHighlightNegative(rangeStr) {
+      addCondFormat(rangeStr, 'negative', 0, { color: '#ff4444', bg: 'rgba(255,68,68,0.12)' });
+    }
+    function condHighlightPositive(rangeStr) {
+      addCondFormat(rangeStr, 'positive', 0, { color: '#00ffcc', bg: 'rgba(0,255,204,0.1)' });
+    }
+    function condHighlightGreater(rangeStr, val) {
+      addCondFormat(rangeStr, 'greater', val, { bg: 'rgba(0,255,204,0.15)', color: '#00ffcc' });
+    }
+    function condHighlightLess(rangeStr, val) {
+      addCondFormat(rangeStr, 'less', val, { bg: 'rgba(255,107,53,0.15)', color: '#ff6b35' });
+    }
+
+    // Expose to AI
+    window.condFormats = condFormats;
+    window.addCondFormat = addCondFormat;
+    window.condHighlightNegative = condHighlightNegative;
+    window.condHighlightPositive = condHighlightPositive;
+    window.condHighlightGreater = condHighlightGreater;
+    window.condHighlightLess = condHighlightLess;
+
+    // ── SPARKLINES ──
+    // Add =SPARKLINE(A1:A10) formula support
+    const origFN_SPARKLINE = function (values) {
+      const nums = values.map(v => +v).filter(v => !isNaN(v));
+      if (nums.length < 2) return '–';
+      const min = Math.min(...nums), max = Math.max(...nums);
+      const range = max - min || 1;
+      const w = 60, h = 16;
+      const points = nums.map((v, i) => `${(i / (nums.length - 1)) * w},${h - ((v - min) / range) * h}`).join(' ');
+      return `<svg width="${w}" height="${h}" style="vertical-align:middle"><polyline points="${points}" fill="none" stroke="#00ffcc" stroke-width="1.2"/></svg>`;
+    };
+    FN.SPARKLINE = origFN_SPARKLINE;
+
+    // Also support =SPARKBAR for bar sparklines
+    FN.SPARKBAR = function (values) {
+      const nums = values.map(v => +v).filter(v => !isNaN(v));
+      if (!nums.length) return '–';
+      const max = Math.max(...nums, 1);
+      const w = 60, h = 16, bw = Math.max(2, Math.floor(w / nums.length) - 1);
+      const bars = nums.map((v, i) => {
+        const bh = Math.max(1, (v / max) * h);
+        return `<rect x="${i * (bw + 1)}" y="${h - bh}" width="${bw}" height="${bh}" fill="#00ffcc" rx="0.5"/>`;
+      }).join('');
+      return `<svg width="${nums.length * (bw + 1)}" height="${h}" style="vertical-align:middle">${bars}</svg>`;
+    };
+
+    // ── AI ALGORITHM TOOLS ──
+    const SHEET_AI_TOOLS = {
+      spreadsheetStats() {
+        const sh = getSheet();
+        let filled = 0, numeric = 0, formulas = 0, total = 0;
+        const usedCols = new Set();
+        let maxRow = 0;
+        for (const [key, cell] of Object.entries(sh.cells)) {
+          total++;
+          const r = parseRef(key);
+          if (r) { usedCols.add(r.col); maxRow = Math.max(maxRow, r.row); }
+          if (cell.v !== '' && cell.v != null) filled++;
+          if (!isNaN(+cell.v) && cell.v !== '') numeric++;
+          if (String(cell.v).startsWith('=')) formulas++;
+        }
+        return `Filled cells: ${filled}\nNumeric: ${numeric}\nFormulas: ${formulas}\nUsed columns: ${usedCols.size}\nUsed rows: ${maxRow}\nSheets: ${state.sheets.length}`;
+      },
+      columnAnalysis(colLetter) {
+        const sh = getSheet();
+        const col = (colLetter || 'A').toUpperCase();
+        const vals = [];
+        for (let r = 1; r <= TOTAL_ROWS; r++) {
+          const cell = sh.cells[cid(col, r)];
+          if (cell && cell.v !== '' && cell.v != null) vals.push(cell.v);
+        }
+        const nums = vals.map(v => +v).filter(v => !isNaN(v));
+        if (!nums.length) return `Column ${col}: ${vals.length} text values, no numbers`;
+        const sum = nums.reduce((a, b) => a + b, 0);
+        const avg = sum / nums.length;
+        const sorted = [...nums].sort((a, b) => a - b);
+        return `Column ${col}:\n  Count: ${nums.length}\n  Sum: ${sum.toFixed(2)}\n  Avg: ${avg.toFixed(2)}\n  Min: ${sorted[0]}\n  Max: ${sorted[sorted.length - 1]}\n  Median: ${sorted[Math.floor(sorted.length / 2)]}`;
+      },
+      dataQuality() {
+        const sh = getSheet();
+        let blanks = 0, errors = 0, mixed = {};
+        for (const [key, cell] of Object.entries(sh.cells)) {
+          const r = parseRef(key);
+          if (!r) continue;
+          if (cell.v === '' || cell.v == null) { blanks++; continue; }
+          if (String(cell.v).startsWith('#')) errors++;
+          const type = isNaN(+cell.v) ? 'text' : 'number';
+          if (!mixed[r.col]) mixed[r.col] = new Set();
+          mixed[r.col].add(type);
+        }
+        const mixedCols = Object.entries(mixed).filter(([, s]) => s.size > 1).map(([c]) => c);
+        const issues = [];
+        if (blanks) issues.push(`${blanks} blank cells in data area`);
+        if (errors) issues.push(`${errors} error values (#REF, #VALUE, etc.)`);
+        if (mixedCols.length) issues.push(`Mixed data types in columns: ${mixedCols.join(', ')}`);
+        return issues.length ? '⚠ Issues found:\n' + issues.map(i => '• ' + i).join('\n') : '✅ Data looks clean!';
+      },
+      findOutliers(colLetter) {
+        const sh = getSheet();
+        const col = (colLetter || 'A').toUpperCase();
+        const nums = [];
+        for (let r = 1; r <= TOTAL_ROWS; r++) {
+          const cell = sh.cells[cid(col, r)];
+          if (cell && !isNaN(+cell.v) && cell.v !== '') nums.push({ row: r, val: +cell.v });
+        }
+        if (nums.length < 4) return 'Not enough data for outlier detection';
+        const sorted = nums.map(n => n.val).sort((a, b) => a - b);
+        const q1 = sorted[Math.floor(sorted.length * 0.25)];
+        const q3 = sorted[Math.floor(sorted.length * 0.75)];
+        const iqr = q3 - q1;
+        const lo = q1 - 1.5 * iqr, hi = q3 + 1.5 * iqr;
+        const outliers = nums.filter(n => n.val < lo || n.val > hi);
+        if (!outliers.length) return `No outliers in column ${col} (IQR method)`;
+        return `Outliers in ${col}:\n` + outliers.map(o => `  ${col}${o.row}: ${o.val}`).join('\n');
+      },
+      suggestFormula() {
+        const sh = getSheet();
+        const suggestions = [];
+        // Find columns with numbers
+        for (const col of COLS.slice(0, 10)) {
+          let count = 0, lastRow = 0;
+          for (let r = 1; r <= 50; r++) {
+            const cell = sh.cells[cid(col, r)];
+            if (cell && !isNaN(+cell.v) && cell.v !== '') { count++; lastRow = r; }
+          }
+          if (count >= 3) {
+            suggestions.push(`=SUM(${col}1:${col}${lastRow})`, `=AVERAGE(${col}1:${col}${lastRow})`, `=SPARKLINE(${col}1:${col}${lastRow})`);
+            break;
+          }
+        }
+        return suggestions.length ? 'Suggested formulas:\n' + suggestions.join('\n') : 'Add some data first!';
+      }
+    };
+    window.SHEET_AI_TOOLS = SHEET_AI_TOOLS;
+
+  </script>
+</body>
+
+</html>

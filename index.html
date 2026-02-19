@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office-Craft — Open Source Office Suite</title>
+    <meta name="description"
+        content="Office-Craft is a free, browser-based office suite with word processing, presentations, and spreadsheets — powered by local AI.">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-void: #050509;
+            --bg-surface: #0c0c18;
+            --bg-card: #12122a;
+            --bg-card-hover: #1a1a3a;
+            --accent-1: #6366f1;
+            --accent-2: #22d3ee;
+            --accent-3: #f472b6;
+            --accent-4: #34d399;
+            --text-primary: #f1f5f9;
+            --text-secondary: rgba(241, 245, 249, 0.65);
+            --text-muted: rgba(241, 245, 249, 0.35);
+            --border: rgba(255, 255, 255, 0.06);
+            --glass: rgba(255, 255, 255, 0.04);
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            height: 100%;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-void);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── BACKGROUND EFFECTS ── */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background-image:
+                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 20%, transparent 80%);
+        }
+
+        .bg-glow-1 {
+            position: fixed;
+            top: -200px;
+            left: -100px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+            z-index: 0;
+            filter: blur(80px);
+            animation: float 12s ease-in-out infinite;
+        }
+
+        .bg-glow-2 {
+            position: fixed;
+            bottom: -150px;
+            right: -100px;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(34, 211, 238, 0.08) 0%, transparent 70%);
+            z-index: 0;
+            filter: blur(80px);
+            animation: float 15s ease-in-out infinite reverse;
+        }
+
+        .bg-glow-3 {
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(244, 114, 182, 0.06) 0%, transparent 70%);
+            z-index: 0;
+            filter: blur(80px);
+            animation: float 18s ease-in-out infinite 3s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            50% {
+                transform: translate(30px, -40px) scale(1.1);
+            }
+        }
+
+        /* ── PARTICLES ── */
+        .particle {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+            animation: drift linear infinite;
+        }
+
+        @keyframes drift {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 1;
+            }
+
+            90% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-10vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        /* ── HEADER ── */
+        .header {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 80px 20px 40px;
+        }
+
+        .logo {
+            font-size: 52px;
+            font-weight: 900;
+            letter-spacing: -2px;
+            background: linear-gradient(135deg, var(--accent-1), var(--accent-2), var(--accent-3));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+            animation: logoShine 8s ease-in-out infinite;
+        }
+
+        @keyframes logoShine {
+
+            0%,
+            100% {
+                filter: brightness(1);
+            }
+
+            50% {
+                filter: brightness(1.25);
+            }
+        }
+
+        .tagline {
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            max-width: 540px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .tagline strong {
+            color: var(--accent-2);
+            font-weight: 600;
+        }
+
+        .version-badge {
+            display: inline-block;
+            margin-top: 18px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: var(--accent-1);
+        }
+
+        /* ── APP CARDS ── */
+        .cards-section {
+            position: relative;
+            z-index: 10;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px 24px 60px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .app-card {
+            position: relative;
+            overflow: hidden;
+            background: var(--glass);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 36px 30px 30px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .app-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--card-glow) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+
+        .app-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--card-accent);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px var(--card-glow);
+        }
+
+        .app-card:hover::before {
+            opacity: 1;
+        }
+
+        .app-card:active {
+            transform: translateY(-4px) scale(0.98);
+        }
+
+        .card-icon {
+            position: relative;
+            z-index: 2;
+            width: 64px;
+            height: 64px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            margin-bottom: 22px;
+            background: var(--card-icon-bg);
+            box-shadow: 0 4px 20px var(--card-glow);
+            transition: transform 0.3s;
+        }
+
+        .app-card:hover .card-icon {
+            transform: scale(1.1) rotate(-3deg);
+        }
+
+        .card-title {
+            position: relative;
+            z-index: 2;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--card-accent), var(--card-accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card-desc {
+            position: relative;
+            z-index: 2;
+            font-size: 14px;
+            line-height: 1.65;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .card-features {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .card-tag {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            background: var(--card-tag-bg);
+            color: var(--card-accent);
+            border: 1px solid var(--card-tag-border);
+        }
+
+        /* Card color themes */
+        .app-card.wordcraft {
+            --card-accent: #c0392b;
+            --card-accent-2: #e74c3c;
+            --card-glow: rgba(192, 57, 43, 0.15);
+            --card-icon-bg: rgba(192, 57, 43, 0.12);
+            --card-tag-bg: rgba(192, 57, 43, 0.08);
+            --card-tag-border: rgba(192, 57, 43, 0.15);
+        }
+
+        .app-card.slidescraft {
+            --card-accent: #6366f1;
+            --card-accent-2: #22d3ee;
+            --card-glow: rgba(99, 102, 241, 0.15);
+            --card-icon-bg: rgba(99, 102, 241, 0.12);
+            --card-tag-bg: rgba(99, 102, 241, 0.08);
+            --card-tag-border: rgba(99, 102, 241, 0.15);
+        }
+
+        .app-card.sheetcraft {
+            --card-accent: #00ffcc;
+            --card-accent-2: #22d3ee;
+            --card-glow: rgba(0, 255, 204, 0.12);
+            --card-icon-bg: rgba(0, 255, 204, 0.1);
+            --card-tag-bg: rgba(0, 255, 204, 0.06);
+            --card-tag-border: rgba(0, 255, 204, 0.12);
+        }
+
+        /* ── FEATURES SECTION ── */
+        .features-section {
+            position: relative;
+            z-index: 10;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px 24px 80px;
+        }
+
+        .features-title {
+            text-align: center;
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 40px;
+            letter-spacing: -0.5px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .feat {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 22px 20px;
+            transition: all 0.3s;
+        }
+
+        .feat:hover {
+            border-color: rgba(99, 102, 241, 0.2);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .feat-icon {
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+
+        .feat-name {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .feat-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 30px 20px 40px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .footer a {
+            color: var(--accent-1);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .shortcut-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        kbd {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 900px) {
+            .cards-section {
+                grid-template-columns: 1fr;
+                max-width: 480px;
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .logo {
+                font-size: 38px;
+            }
+
+            .header {
+                padding: 50px 16px 30px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .logo {
+                font-size: 30px;
+            }
+
+            .tagline {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Background effects -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
+    <div class="bg-glow-3"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">Office-Craft</div>
+        <p class="tagline">A free, <strong>browser-native</strong> office suite with word processing, presentations, and
+            spreadsheets — powered by <strong>local AI</strong> that runs entirely on your device.</p>
+        <span class="version-badge">✦ SUITE v1.0 — 100% Open Source · 100% Offline</span>
+    </header>
+
+    <!-- App Cards -->
+    <section class="cards-section">
+
+        <!-- Wordcraft -->
+        <a href="Wordcraft.html" class="app-card wordcraft" id="card-wordcraft">
+            <div class="card-icon">📝</div>
+            <div class="card-title">WordCraft</div>
+            <div class="card-desc">A distraction-free word processor with AI writing assistance, focus mode, DOCX
+                import, and beautiful typography.</div>
+            <div class="card-features">
+                <span class="card-tag">AI Writer</span>
+                <span class="card-tag">DOCX Import</span>
+                <span class="card-tag">Markdown</span>
+                <span class="card-tag">Focus Mode</span>
+                <span class="card-tag">Dark Mode</span>
+            </div>
+            <div class="card-recent" id="recent-wordcraft"></div>
+        </a>
+
+        <!-- SlidesCraft -->
+        <a href="SlidesCraft.html" class="app-card slidescraft" id="card-slidescraft">
+            <div class="card-icon">🎨</div>
+            <div class="card-title">SlidesCraft</div>
+            <div class="card-desc">Build stunning presentations with drag-and-drop elements, slide templates, voice
+                commands, and PPTX support.</div>
+            <div class="card-features">
+                <span class="card-tag">Voice Control</span>
+                <span class="card-tag">PPTX Export</span>
+                <span class="card-tag">Templates</span>
+                <span class="card-tag">Presenter Mode</span>
+                <span class="card-tag">Animations</span>
+            </div>
+            <div class="card-recent" id="recent-slidescraft"></div>
+        </a>
+
+        <!-- SheetCraft -->
+        <a href="SheetCraft.html" class="app-card sheetcraft" id="card-sheetcraft">
+            <div class="card-icon">📊</div>
+            <div class="card-title">SheetCraft</div>
+            <div class="card-desc">A powerful spreadsheet with 60+ formulas, 15 chart types, conditional formatting, and
+                a built-in AI data analyst.</div>
+            <div class="card-features">
+                <span class="card-tag">AI Agent</span>
+                <span class="card-tag">60+ Formulas</span>
+                <span class="card-tag">15 Charts</span>
+                <span class="card-tag">XLSX Export</span>
+                <span class="card-tag">Sparklines</span>
+            </div>
+            <div class="card-recent" id="recent-sheetcraft"></div>
+        </a>
+
+    </section>
+
+    <!-- Suite Features -->
+    <section class="features-section">
+        <h2 class="features-title">✨ Suite-Wide Capabilities</h2>
+        <div class="features-grid">
+            <div class="feat">
+                <div class="feat-icon">🧠</div>
+                <div class="feat-name">Local AI</div>
+                <div class="feat-desc">WebGPU-powered AI runs entirely in your browser. No API keys, no cloud, no data
+                    leaves your device.</div>
+            </div>
+            <div class="feat">
+                <div class="feat-icon">📱</div>
+                <div class="feat-name">Mobile-First</div>
+                <div class="feat-desc">Every app is fully responsive with touch gestures, bottom navigation, and
+                    mobile-optimized toolbars.</div>
+            </div>
+            <div class="feat">
+                <div class="feat-icon">🔒</div>
+                <div class="feat-name">Privacy-First</div>
+                <div class="feat-desc">All data stored in localStorage. No accounts, no servers, no tracking. Your work
+                    stays yours.</div>
+            </div>
+            <div class="feat">
+                <div class="feat-icon">📂</div>
+                <div class="feat-name">File Compatibility</div>
+                <div class="feat-desc">Import and export DOCX, PPTX, XLSX, CSV, Markdown, PDF — work with files you
+                    already have.</div>
+            </div>
+            <div class="feat">
+                <div class="feat-icon">🎨</div>
+                <div class="feat-name">Beautiful Design</div>
+                <div class="feat-desc">Glassmorphism, smooth animations, dark themes, font customization — a premium
+                    look with zero cost.</div>
+            </div>
+            <div class="feat">
+                <div class="feat-icon">⚡</div>
+                <div class="feat-name">Zero Setup</div>
+                <div class="feat-desc">No installation, no sign-up. Open the HTML file in any modern browser and start
+                    working immediately.</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div>Office-Craft Suite — Free & Open Source Office Tools</div>
+        <div class="shortcut-hint"><kbd>Ctrl</kbd>+<kbd>N</kbd> New Document &nbsp; <kbd>Ctrl</kbd>+<kbd>S</kbd> Save
+            &nbsp; <kbd>F5</kbd> Present</div>
+    </footer>
+
+    <script>
+        // ── PARTICLES ──
+        (function createParticles() {
+            const count = window.innerWidth < 600 ? 8 : 16;
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                const size = Math.random() * 3 + 1;
+                const colors = ['rgba(99,102,241,0.3)', 'rgba(34,211,238,0.3)', 'rgba(244,114,182,0.2)', 'rgba(52,211,153,0.25)'];
+                p.style.cssText = `
+      width: ${size}px; height: ${size}px;
+      left: ${Math.random() * 100}%;
+      background: ${colors[Math.floor(Math.random() * colors.length)]};
+      animation-duration: ${12 + Math.random() * 20}s;
+      animation-delay: ${Math.random() * 15}s;
+    `;
+                document.body.appendChild(p);
+            }
+        })();
+
+        // ── RECENT FILES FROM LOCALSTORAGE ──
+        (function showRecents() {
+            // Wordcraft
+            const wcDoc = localStorage.getItem('wc_doc');
+            if (wcDoc) {
+                const preview = wcDoc.replace(/<[^>]+>/g, '').trim().substring(0, 60);
+                if (preview.length > 5) {
+                    const el = document.getElementById('recent-wordcraft');
+                    el.innerHTML = `<div style="margin-top:16px;padding:10px 12px;background:rgba(192,57,43,0.06);border:1px solid rgba(192,57,43,0.1);border-radius:8px;font-size:11px;color:var(--text-secondary);">📄 Last session: "${preview}…"</div>`;
+                }
+            }
+
+            // SlidesCraft
+            const scPrez = localStorage.getItem('slidescraft_v4') || localStorage.getItem('prezai_v4');
+            if (scPrez) {
+                try {
+                    const d = JSON.parse(scPrez);
+                    const el = document.getElementById('recent-slidescraft');
+                    el.innerHTML = `<div style="margin-top:16px;padding:10px 12px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.1);border-radius:8px;font-size:11px;color:var(--text-secondary);">🎨 Last: "${d.title || 'Untitled'}" — ${d.slides?.length || 0} slides</div>`;
+                } catch (e) { }
+            }
+
+            // SheetCraft
+            const nsData = localStorage.getItem('sheetcraft_v5') || localStorage.getItem('nexasheet_v5');
+            if (nsData) {
+                try {
+                    const d = JSON.parse(nsData);
+                    const cells = Object.keys(d.sheets?.[0]?.cells || {}).length;
+                    const el = document.getElementById('recent-sheetcraft');
+                    el.innerHTML = `<div style="margin-top:16px;padding:10px 12px;background:rgba(0,255,204,0.04);border:1px solid rgba(0,255,204,0.08);border-radius:8px;font-size:11px;color:var(--text-secondary);">📊 Last: ${cells} cells with data</div>`;
+                } catch (e) { }
+            }
+        })();
+    </script>
+</body>
+
+</html>

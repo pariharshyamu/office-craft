@@ -1,0 +1,4843 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WordCraft — Open Source Word Processor</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <style>
+        :root {
+            --ink: #1a1a2e;
+            --paper: #fafaf8;
+            --cream: #f5f3ee;
+            --accent: #c0392b;
+            --accent-light: #f8e8e6;
+            --border: #ddd9d0;
+            --muted: #8a8680;
+            --toolbar-bg: #ffffff;
+            --sidebar-bg: #f0ede6;
+            --page-shadow: 0 4px 32px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
+            --rule: 1px solid var(--border);
+            --focus-ring: 0 0 0 2px rgba(192, 57, 43, 0.3);
+            --mobile-bar-h: 48px;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        /* ── RESET ── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--cream);
+            color: var(--ink);
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* ── TITLE BAR ── */
+        .titlebar {
+            background: var(--ink);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 12px;
+            padding-top: env(safe-area-inset-top, 0px);
+            height: calc(40px + env(safe-area-inset-top, 0px));
+            flex-shrink: 0;
+            font-size: 13px;
+            letter-spacing: 0.02em;
+            position: relative;
+            z-index: 30;
+        }
+
+        .titlebar-logo {
+            font-family: 'Lora', serif;
+            font-weight: 600;
+            font-size: 15px;
+            color: #fff;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+
+        .titlebar-logo span {
+            color: var(--accent);
+        }
+
+        .titlebar-filename {
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 11px;
+            flex: 1;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
+        .titlebar-status {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.45);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #27ae60;
+            flex-shrink: 0;
+        }
+
+        /* ── HAMBURGER (mobile only) ── */
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #fff;
+            font-size: 18px;
+            padding: 4px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        /* ── MENU BAR ── */
+        .menubar {
+            background: #fff;
+            border-bottom: var(--rule);
+            display: flex;
+            align-items: center;
+            padding: 0 6px;
+            height: 32px;
+            flex-shrink: 0;
+            font-size: 12.5px;
+            position: relative;
+            z-index: 25;
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .menubar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .menu-item {
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--ink);
+            user-select: none;
+            transition: background 0.12s;
+            position: relative;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .menu-item:hover,
+        .menu-item.active {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .dropdown {
+            display: none;
+            position: fixed;
+            background: #fff;
+            border: var(--rule);
+            border-radius: 6px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            min-width: 180px;
+            z-index: 200;
+            padding: 4px 0;
+            font-size: 12.5px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .menu-item.active .dropdown {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--ink);
+            transition: background 0.1s;
+            min-height: 36px;
+        }
+
+        .dropdown-item:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .dropdown-item .shortcut {
+            color: var(--muted);
+            font-size: 11px;
+            margin-left: 12px;
+        }
+
+        .dropdown-sep {
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
+        /* ── TOOLBAR ── */
+        .toolbar {
+            background: var(--toolbar-bg);
+            border-bottom: var(--rule);
+            display: flex;
+            align-items: center;
+            gap: 1px;
+            padding: 4px 6px;
+            flex-shrink: 0;
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            scroll-snap-type: x proximity;
+            position: relative;
+            z-index: 20;
+        }
+
+        .toolbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .toolbar-sep {
+            width: 1px;
+            height: 22px;
+            background: var(--border);
+            margin: 0 3px;
+            flex-shrink: 0;
+        }
+
+        .tb-btn {
+            min-width: 34px;
+            height: 34px;
+            border: none;
+            background: transparent;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            color: var(--ink);
+            transition: background 0.12s, color 0.12s, transform 0.08s;
+            position: relative;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .tb-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .tb-btn:active {
+            transform: scale(0.92);
+        }
+
+        .tb-btn.active {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .tb-btn:disabled {
+            opacity: 0.35;
+            cursor: default;
+        }
+
+        .tb-btn::after {
+            content: attr(title);
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--ink);
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+            z-index: 50;
+        }
+
+        @media (hover: hover) {
+            .tb-btn:hover::after {
+                opacity: 1;
+            }
+        }
+
+        .font-select,
+        .size-select {
+            border: var(--rule);
+            border-radius: 4px;
+            padding: 2px 5px;
+            font-size: 12px;
+            background: #fff;
+            color: var(--ink);
+            cursor: pointer;
+            outline: none;
+            font-family: 'DM Sans', sans-serif;
+            flex-shrink: 0;
+            height: 28px;
+        }
+
+        .font-select {
+            width: 110px;
+        }
+
+        .size-select {
+            width: 50px;
+        }
+
+        .font-select:focus,
+        .size-select:focus {
+            border-color: var(--accent);
+        }
+
+        .color-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 5px;
+            border: var(--rule);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .color-btn input[type=color] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .color-swatch {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        /* ── FOCUS MODE BANNER ── */
+        .focus-banner {
+            background: linear-gradient(90deg, #1a1a2e, #2d2d4e);
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+            font-size: 11px;
+            padding: 4px 12px;
+            flex-shrink: 0;
+            display: none;
+            letter-spacing: 0.08em;
+        }
+
+        .focus-banner.visible {
+            display: block;
+        }
+
+        /* ── RULER ── */
+        .ruler {
+            height: 24px;
+            background: #e8e5de;
+            border-bottom: var(--rule);
+            position: relative;
+            flex-shrink: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .ruler-inner {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 850px;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .ruler-mark {
+            position: absolute;
+            bottom: 0;
+            background: #999;
+            width: 1px;
+        }
+
+        .ruler-label {
+            position: absolute;
+            bottom: 8px;
+            font-size: 8px;
+            color: #888;
+            transform: translateX(-50%);
+        }
+
+        /* ── MAIN AREA ── */
+        .main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ── LEFT SIDEBAR ── */
+        .sidebar-left {
+            width: 200px;
+            background: var(--sidebar-bg);
+            border-right: var(--rule);
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: width 0.25s ease, transform 0.25s ease, opacity 0.25s;
+        }
+
+        .sidebar-left.collapsed {
+            width: 0;
+            border: none;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 10px 14px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            border-bottom: var(--rule);
+            flex-shrink: 0;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: var(--rule);
+            flex-shrink: 0;
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 7px 4px;
+            text-align: center;
+            font-size: 10px;
+            cursor: pointer;
+            color: var(--muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .sidebar-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: rgba(192, 57, 43, 0.05);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .outline-item {
+            padding: 6px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 0;
+            transition: background 0.1s;
+            color: var(--ink);
+            line-height: 1.3;
+        }
+
+        .outline-item:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .outline-item.h1 {
+            font-weight: 600;
+            font-size: 12.5px;
+        }
+
+        .outline-item.h2 {
+            padding-left: 22px;
+            color: #555;
+            font-size: 11.5px;
+        }
+
+        .outline-item.h3 {
+            padding-left: 30px;
+            color: #777;
+            font-size: 11px;
+        }
+
+        /* ── WRITING STATS WIDGET (new) ── */
+        .writing-stats-widget {
+            padding: 10px 12px;
+            background: rgba(192, 57, 43, 0.04);
+            border-top: var(--rule);
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .stat-val {
+            color: var(--ink);
+            font-weight: 600;
+        }
+
+        .reading-bar {
+            height: 3px;
+            background: var(--border);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .reading-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 0.4s;
+        }
+
+        /* ── EDITOR AREA ── */
+        .editor-area {
+            flex: 1;
+            overflow-y: auto;
+            background: var(--cream);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 16px 80px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ── FOCUS MODE ── */
+        .focus-mode .toolbar,
+        .focus-mode .menubar,
+        .focus-mode .ruler,
+        .focus-mode .sidebar-left,
+        .focus-mode .sidebar-right {
+            display: none !important;
+        }
+
+        .focus-mode .editor-area {
+            padding-top: 40px;
+            background: #f9f8f5;
+        }
+
+        .focus-mode .page {
+            box-shadow: none;
+        }
+
+        /* ── TYPEWRITER MODE ── */
+        .typewriter-mode .editor-area {
+            justify-content: flex-start;
+        }
+
+        .typewriter-mode #editor {
+            scroll-margin-top: 40vh;
+        }
+
+        /* ── SCROLL NAV BUTTONS ── */
+        .scroll-nav {
+            position: fixed;
+            right: 10px;
+            bottom: calc(var(--safe-bottom) + 68px);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            z-index: 88;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+
+        .scroll-nav.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .scroll-nav-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(26, 26, 46, 0.7);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+            transition: background 0.15s, transform 0.1s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .scroll-nav-btn:hover {
+            background: var(--accent);
+        }
+
+        .scroll-nav-btn:active {
+            transform: scale(0.88);
+        }
+
+        /* ── CONTEXT SELECTION TOOLBAR ── */
+        .context-toolbar {
+            position: fixed;
+            background: #1a1a2e;
+            border-radius: 8px;
+            padding: 3px 5px;
+            display: none;
+            align-items: center;
+            gap: 1px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+            z-index: 150;
+            pointer-events: all;
+        }
+
+        .context-toolbar.visible {
+            display: flex;
+        }
+
+        .ctx-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.85);
+            cursor: pointer;
+            padding: 5px 8px;
+            border-radius: 5px;
+            transition: background 0.12s;
+            font-family: 'DM Sans', sans-serif;
+            white-space: nowrap;
+            font-size: 11px;
+            font-weight: 500;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .ctx-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .ctx-btn.ai-ctx {
+            color: #f1c40f;
+        }
+
+        .ctx-sep {
+            width: 1px;
+            height: 16px;
+            background: rgba(255, 255, 255, 0.18);
+            margin: 0 2px;
+        }
+
+        /* ── ENHANCED TOAST ── */
+        .toast {
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 64px);
+            left: 50%;
+            transform: translateX(-50%) translateY(14px);
+            background: var(--ink);
+            color: #fff;
+            padding: 9px 18px;
+            border-radius: 22px;
+            font-size: 12.5px;
+            opacity: 0;
+            transition: opacity 0.22s cubic-bezier(.4, 0, .2, 1), transform 0.22s cubic-bezier(.4, 0, .2, 1);
+            pointer-events: none;
+            z-index: 999;
+            max-width: calc(100vw - 32px);
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ── GOAL CELEBRATION ── */
+        @keyframes goalFlash {
+
+            0%,
+            100% {
+                background: rgba(39, 174, 96, 0);
+            }
+
+            40% {
+                background: rgba(39, 174, 96, 0.12);
+            }
+        }
+
+        .goal-reached {
+            animation: goalFlash 1.8s ease forwards;
+        }
+
+        /* ── SMOOTH TRANSITIONS ── */
+        .page {
+            transition: padding 0.25s ease, max-width 0.25s ease;
+        }
+
+        .sidebar-left,
+        .sidebar-right {
+            transition: width 0.25s ease;
+        }
+
+        /* Page */
+        .page {
+            background: #fff;
+            width: 100%;
+            max-width: 850px;
+            min-height: 600px;
+            box-shadow: var(--page-shadow);
+            border-radius: 3px;
+            margin-bottom: 16px;
+            position: relative;
+            padding: 48px 48px;
+            cursor: text;
+            transition: padding 0.2s;
+        }
+
+        /* Content editable */
+        #editor {
+            outline: none;
+            font-family: 'Lora', serif;
+            font-size: 15px;
+            line-height: 1.75;
+            color: var(--ink);
+            min-height: 400px;
+            caret-color: var(--accent);
+        }
+
+        #editor h1 {
+            font-family: 'Lora', serif;
+            font-size: 26px;
+            font-weight: 600;
+            line-height: 1.3;
+            margin: 0 0 14px;
+            color: var(--ink);
+        }
+
+        #editor h2 {
+            font-family: 'Lora', serif;
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.3;
+            margin: 22px 0 10px;
+            color: var(--ink);
+        }
+
+        #editor h3 {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            margin: 18px 0 6px;
+            letter-spacing: 0.01em;
+        }
+
+        #editor p {
+            margin: 0 0 10px;
+        }
+
+        #editor ul,
+        #editor ol {
+            margin: 6px 0 10px 22px;
+        }
+
+        #editor li {
+            margin-bottom: 4px;
+        }
+
+        #editor blockquote {
+            border-left: 3px solid var(--accent);
+            padding: 8px 14px;
+            margin: 14px 0;
+            color: #555;
+            font-style: italic;
+            background: var(--accent-light);
+            border-radius: 0 4px 4px 0;
+        }
+
+        #editor table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 14px 0;
+            font-size: 14px;
+        }
+
+        #editor table th {
+            background: var(--ink);
+            color: #fff;
+            padding: 7px 10px;
+            text-align: left;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.03em;
+        }
+
+        #editor table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #editor table tr:nth-child(even) td {
+            background: var(--cream);
+        }
+
+        #editor code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            background: #f0f0ec;
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: #c0392b;
+        }
+
+        #editor pre {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            background: #1a1a2e;
+            color: #e8e5de;
+            padding: 14px 18px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        #editor .tracked-insert {
+            color: #27ae60;
+            background: rgba(39, 174, 96, 0.08);
+            border-bottom: 1px solid #27ae60;
+        }
+
+        #editor .tracked-delete {
+            color: #e74c3c;
+            background: rgba(231, 76, 60, 0.08);
+            text-decoration: line-through;
+        }
+
+        #editor .comment-highlight {
+            background: rgba(241, 196, 15, 0.25);
+            border-bottom: 2px solid #f1c40f;
+            cursor: pointer;
+        }
+
+        #editor .page-break {
+            border: none;
+            border-top: 2px dashed #ccc;
+            margin: 22px 0;
+        }
+
+        /* Word count bar */
+        .word-count-bar {
+            width: 100%;
+            max-width: 850px;
+            font-size: 11px;
+            color: var(--muted);
+            padding: 4px 2px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* ── MOBILE FORMATTING TOOLBAR (FLOATING) ── */
+        .mobile-format-bar {
+            display: none;
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--ink);
+            border-radius: 24px;
+            padding: 6px 10px;
+            gap: 2px;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            z-index: 90;
+            overflow-x: auto;
+            max-width: calc(100vw - 20px);
+            scrollbar-width: none;
+        }
+
+        .mobile-format-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .mfb-btn {
+            min-width: 36px;
+            height: 36px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.85);
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            transition: background 0.12s;
+        }
+
+        .mfb-btn:active,
+        .mfb-btn.active {
+            background: var(--accent);
+        }
+
+        .mfb-sep {
+            width: 1px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 0 2px;
+            flex-shrink: 0;
+        }
+
+        /* ── RIGHT SIDEBAR ── */
+        .sidebar-right {
+            width: 240px;
+            background: #fff;
+            border-left: var(--rule);
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: width 0.25s ease;
+        }
+
+        .sidebar-right.collapsed {
+            width: 0;
+            border: none;
+        }
+
+        .right-tab-bar {
+            display: flex;
+            border-bottom: var(--rule);
+            flex-shrink: 0;
+        }
+
+        .right-tab {
+            flex: 1;
+            padding: 8px 4px;
+            text-align: center;
+            font-size: 10px;
+            cursor: pointer;
+            color: var(--muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .right-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+            background: rgba(192, 57, 43, 0.04);
+        }
+
+        .right-panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: none;
+        }
+
+        .right-panel.active {
+            display: block;
+        }
+
+        /* ── AI ASSISTANT PANEL ── */
+        .ai-status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 11px;
+            font-weight: 500;
+            background: var(--cream);
+            border: var(--rule);
+            transition: all 0.3s;
+        }
+
+        .ai-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            background: #ccc;
+            transition: background 0.3s;
+        }
+
+        .ai-status-dot.checking {
+            background: #f39c12;
+            animation: pulse 1s infinite;
+        }
+
+        .ai-status-dot.ready {
+            background: #27ae60;
+        }
+
+        .ai-status-dot.loading {
+            background: #3498db;
+            animation: pulse 0.8s infinite;
+        }
+
+        .ai-status-dot.error {
+            background: #e74c3c;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        .ai-status-text {
+            flex: 1;
+            color: var(--ink);
+        }
+
+        .ai-status-badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .badge-webllm {
+            background: #1a1a2e;
+            color: #fff;
+        }
+
+        .badge-transformers {
+            background: #f39c12;
+            color: #fff;
+        }
+
+        .badge-none {
+            background: var(--border);
+            color: var(--muted);
+        }
+
+        .ai-model-selector {
+            width: 100%;
+            border: var(--rule);
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 11px;
+            font-family: 'DM Sans', sans-serif;
+            background: #fff;
+            color: var(--ink);
+            outline: none;
+            cursor: pointer;
+            margin-bottom: 8px;
+            display: none;
+        }
+
+        .ai-model-selector.visible {
+            display: block;
+        }
+
+        .ai-model-selector:focus {
+            border-color: var(--accent);
+        }
+
+        .ai-download-area {
+            display: none;
+            background: var(--cream);
+            border: var(--rule);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .ai-download-area.visible {
+            display: block;
+        }
+
+        .ai-download-title {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .ai-download-sub {
+            font-size: 10px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+
+        .ai-progress-wrap {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+
+        .ai-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), #e74c3c);
+            border-radius: 3px;
+            transition: width 0.4s;
+            width: 0%;
+        }
+
+        .ai-progress-label {
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        .ai-download-btn {
+            margin-top: 8px;
+            padding: 6px 14px;
+            background: var(--ink);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: background 0.15s;
+        }
+
+        .ai-download-btn:hover {
+            background: var(--accent);
+        }
+
+        .ai-panel-input {
+            width: 100%;
+            border: var(--rule);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 12px;
+            font-family: 'DM Sans', sans-serif;
+            resize: none;
+            outline: none;
+            min-height: 60px;
+            background: #fafaf8;
+            transition: border-color 0.15s;
+        }
+
+        .ai-panel-input:focus {
+            border-color: var(--accent);
+        }
+
+        .ai-panel-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .ai-chips-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin: 8px 0;
+        }
+
+        .ai-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 9px;
+            border-radius: 14px;
+            font-size: 10px;
+            background: var(--accent-light);
+            color: var(--accent);
+            cursor: pointer;
+            border: 1px solid rgba(192, 57, 43, 0.2);
+            transition: all 0.12s;
+            white-space: nowrap;
+            font-weight: 500;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .ai-chip:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .ai-chip:disabled,
+        .ai-chip.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .ai-run-btn {
+            width: 100%;
+            padding: 8px;
+            background: var(--ink);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .ai-run-btn:hover:not(:disabled) {
+            background: var(--accent);
+        }
+
+        .ai-run-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .ai-response {
+            background: var(--cream);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            line-height: 1.65;
+            margin-top: 10px;
+            border: var(--rule);
+            display: none;
+            max-height: 240px;
+            overflow-y: auto;
+            border-left: 3px solid var(--accent);
+        }
+
+        .ai-response.visible {
+            display: block;
+        }
+
+        .ai-response-label {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        .ai-response-text {
+            color: var(--ink);
+        }
+
+        .ai-response-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .ai-stream-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 12px;
+            background: var(--accent);
+            margin-left: 1px;
+            vertical-align: middle;
+            animation: blink 0.7s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .ai-no-support {
+            background: #fff9e6;
+            border: 1px solid #f1c40f;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 11px;
+            line-height: 1.6;
+            color: #7a5800;
+            display: none;
+        }
+
+        .ai-no-support.visible {
+            display: block;
+        }
+
+        .ai-history {
+            margin-top: 10px;
+            display: none;
+        }
+
+        .ai-history.visible {
+            display: block;
+        }
+
+        .ai-history-title {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .ai-history-item {
+            padding: 5px 8px;
+            background: #fff;
+            border: var(--rule);
+            border-radius: 4px;
+            font-size: 10px;
+            color: var(--muted);
+            margin-bottom: 3px;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: all 0.12s;
+        }
+
+        .ai-history-item:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .ai-loading-dots span {
+            display: inline-block;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--accent);
+            margin: 0 2px;
+            animation: loadDot 1.2s infinite;
+        }
+
+        .ai-loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .ai-loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes loadDot {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0.6);
+                opacity: 0.4;
+            }
+
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* ── STYLE PANEL ── */
+        .style-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .style-tile {
+            border: var(--rule);
+            border-radius: 5px;
+            padding: 8px 6px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.15s;
+            background: #fff;
+        }
+
+        .style-tile:hover {
+            border-color: var(--accent);
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .style-tile.active {
+            border-color: var(--accent);
+            background: var(--accent-light);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .style-tile.h1-tile {
+            font-family: 'Lora', serif;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .style-tile.h2-tile {
+            font-family: 'Lora', serif;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        /* ── PROP CONTROLS ── */
+        .prop-section {
+            margin-bottom: 14px;
+        }
+
+        .prop-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .prop-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+            padding: 2px 0;
+        }
+
+        .prop-control {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .prop-btn {
+            width: 28px;
+            height: 28px;
+            border: var(--rule);
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.12s;
+            color: var(--ink);
+        }
+
+        .prop-btn:hover {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .prop-input {
+            border: var(--rule);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 12px;
+            text-align: center;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .prop-select {
+            border: var(--rule);
+            border-radius: 4px;
+            padding: 2px 4px;
+            font-size: 11px;
+            background: #fff;
+            cursor: pointer;
+            outline: none;
+        }
+
+        /* ── COMMENT CARDS ── */
+        .comment-card {
+            border: var(--rule);
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            background: #fafafa;
+            font-size: 12px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .comment-author {
+            font-weight: 600;
+            font-size: 11px;
+            color: var(--ink);
+        }
+
+        .comment-time {
+            font-size: 10px;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .comment-text {
+            line-height: 1.5;
+            color: #333;
+        }
+
+        .comment-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .comment-btn {
+            font-size: 10px;
+            padding: 2px 8px;
+            border: var(--rule);
+            border-radius: 10px;
+            cursor: pointer;
+            background: #fff;
+            color: var(--muted);
+            transition: all 0.12s;
+        }
+
+        .comment-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .add-comment-area {
+            margin-top: 12px;
+        }
+
+        textarea {
+            width: 100%;
+            border: var(--rule);
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            resize: vertical;
+            min-height: 60px;
+            outline: none;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .add-comment-btn {
+            margin-top: 6px;
+            width: 100%;
+            padding: 6px;
+            background: var(--ink);
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .add-comment-btn:hover {
+            background: var(--accent);
+        }
+
+        /* ── FIND BAR ── */
+        .find-banner {
+            background: var(--cream);
+            border-bottom: var(--rule);
+            display: none;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            z-index: 20;
+        }
+
+        .find-banner.open {
+            display: flex;
+        }
+
+        .find-input {
+            border: var(--rule);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            outline: none;
+            font-family: 'DM Sans', sans-serif;
+            width: 130px;
+            flex-shrink: 0;
+        }
+
+        .find-input:focus {
+            border-color: var(--accent);
+        }
+
+        .find-count {
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .find-close {
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 16px;
+            padding: 4px;
+        }
+
+        .find-close:hover {
+            color: var(--accent);
+        }
+
+        /* ── BUTTONS ── */
+        .btn {
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12.5px;
+            padding: 6px 14px;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: var(--ink);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent);
+        }
+
+        .btn-secondary {
+            background: var(--cream);
+            border: var(--rule);
+            color: var(--ink);
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* ── MODALS ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+            z-index: 300;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            max-height: 90vh;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: var(--rule);
+            flex-shrink: 0;
+        }
+
+        .modal-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--ink);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 16px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .modal-close:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        .modal-body {
+            padding: 14px 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 10px 16px;
+            border-top: var(--rule);
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        /* ── TABLE DIALOG ── */
+        .table-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 22px);
+            gap: 2px;
+            margin-bottom: 10px;
+        }
+
+        .tg-cell {
+            width: 22px;
+            height: 22px;
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            cursor: pointer;
+            background: var(--cream);
+            transition: background 0.1s, border-color 0.1s;
+        }
+
+        .tg-cell.hover {
+            background: var(--accent-light);
+            border-color: var(--accent);
+        }
+
+        /* ── LINK/TABLE FORM ── */
+        .form-row {
+            margin-bottom: 10px;
+        }
+
+        .form-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .form-input {
+            width: 100%;
+            border: var(--rule);
+            border-radius: 5px;
+            padding: 6px 10px;
+            font-size: 13px;
+            outline: none;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .form-input:focus {
+            border-color: var(--accent);
+            box-shadow: var(--focus-ring);
+        }
+
+        /* ── SHORTCUTS MODAL ── */
+        .shortcut-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--cream);
+            font-size: 12.5px;
+        }
+
+        .shortcut-row:last-child {
+            border-bottom: none;
+        }
+
+        .shortcut-key {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            background: var(--cream);
+            border: var(--rule);
+            border-radius: 3px;
+            padding: 1px 5px;
+            color: var(--ink);
+        }
+
+        /* ── WORD COUNT MODAL ── */
+        .wc-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--cream);
+            font-size: 13px;
+        }
+
+        .wc-stat:last-child {
+            border-bottom: none;
+        }
+
+        .wc-val {
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ── DOCX IMPORT ── */
+        .docx-drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 28px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+
+        .docx-drop-zone:hover,
+        .docx-drop-zone.drag-over {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        .docx-drop-zone input[type=file] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .docx-drop-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .docx-drop-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .docx-drop-sub {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .docx-progress {
+            display: none;
+            margin-top: 12px;
+        }
+
+        .docx-progress.visible {
+            display: block;
+        }
+
+        .progress-bar-wrap {
+            height: 6px;
+            background: var(--cream);
+            border-radius: 3px;
+            margin-top: 6px;
+            overflow: hidden;
+            border: var(--rule);
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .docx-warnings {
+            display: none;
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: #fff9e6;
+            border-radius: 5px;
+            font-size: 11px;
+            color: #7a5800;
+            border: 1px solid #f1c40f;
+        }
+
+        .docx-warnings.visible {
+            display: block;
+        }
+
+        /* ── EXPORT OPTIONS ── */
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .export-option {
+            border: var(--rule);
+            border-radius: 6px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .export-option:hover {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        .export-option.selected {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        .export-option-icon {
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+
+        .export-option-label {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .export-option-desc {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .docx-export-settings {
+            margin-top: 10px;
+        }
+
+        .docx-setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        /* ── TEMPLATES MODAL ── */
+        .template-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .template-card {
+            border: var(--rule);
+            border-radius: 7px;
+            padding: 12px 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+            background: var(--cream);
+        }
+
+        .template-card:hover {
+            border-color: var(--accent);
+            background: var(--accent-light);
+            transform: translateY(-1px);
+        }
+
+        .template-icon {
+            font-size: 26px;
+            margin-bottom: 6px;
+        }
+
+        .template-name {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .template-desc {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        /* ── READING PROGRESS BAR ── */
+        .reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 2px;
+            background: var(--accent);
+            z-index: 500;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        /* ── DARK MODE ── */
+        .dark-mode {
+            --ink: #e8e5de;
+            --paper: #1a1a2e;
+            --cream: #1e1e30;
+            --accent: #e74c3c;
+            --accent-light: rgba(231, 76, 60, 0.12);
+            --border: #2d2d4a;
+            --muted: #6b6880;
+            --toolbar-bg: #16162a;
+            --sidebar-bg: #13132a;
+        }
+
+        .dark-mode body {
+            background: var(--cream);
+        }
+
+        .dark-mode .page {
+            background: var(--paper);
+        }
+
+        .dark-mode .dropdown {
+            background: #16162a;
+        }
+
+        .dark-mode .modal {
+            background: #16162a;
+        }
+
+        .dark-mode .style-tile {
+            background: #1e1e30;
+        }
+
+        .dark-mode .tb-btn::after {
+            background: #555;
+        }
+
+        /* ── TOAST ── */
+        .toast {
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 64px);
+            left: 50%;
+            transform: translateX(-50%) translateY(8px);
+            background: var(--ink);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12.5px;
+            opacity: 0;
+            transition: opacity 0.2s, transform 0.2s;
+            pointer-events: none;
+            z-index: 999;
+            white-space: nowrap;
+            max-width: calc(100vw - 32px);
+            text-align: center;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ── ABOUT MODAL ── */
+        .about-logo {
+            font-family: 'Lora', serif;
+            font-size: 32px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 4px;
+        }
+
+        .about-logo span {
+            color: var(--accent);
+        }
+
+        .about-version {
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 16px;
+        }
+
+        /* ── SIDE DRAWER OVERLAY (mobile) ── */
+        .drawer-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 40;
+        }
+
+        .drawer-overlay.visible {
+            display: block;
+        }
+
+        /* ── FOCUS MODE EXIT BTN ── */
+        .focus-exit {
+            position: fixed;
+            top: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            z-index: 100;
+            display: none;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .focus-mode .focus-exit {
+            display: block;
+        }
+
+        /* ══════════════════════════════════
+   RESPONSIVE — TABLET & MOBILE
+══════════════════════════════════ */
+
+        /* Tablet (≤900px) */
+        @media (max-width: 900px) {
+            .sidebar-left {
+                width: 0;
+                border: none;
+                overflow: hidden;
+            }
+
+            .sidebar-right {
+                width: 0;
+                border: none;
+                overflow: hidden;
+            }
+
+            .page {
+                padding: 36px 28px;
+            }
+
+            .ruler {
+                display: none;
+            }
+        }
+
+        /* Mobile (≤600px) */
+        @media (max-width: 600px) {
+            .titlebar {
+                height: calc(44px + env(safe-area-inset-top, 0px));
+                padding: 0 10px;
+                padding-top: env(safe-area-inset-top, 0px);
+            }
+
+            .titlebar-logo {
+                font-size: 14px;
+            }
+
+            .hamburger {
+                display: flex;
+            }
+
+            .menubar {
+                display: none;
+            }
+
+            .toolbar {
+                padding: 3px 6px;
+                gap: 0;
+            }
+
+            .font-select {
+                width: 90px;
+            }
+
+            .size-select {
+                width: 44px;
+            }
+
+            .tb-btn {
+                min-width: 32px;
+                height: 32px;
+                font-size: 12px;
+            }
+
+            .editor-area {
+                padding: 10px 6px 80px;
+            }
+
+            .page {
+                padding: 20px 16px;
+                border-radius: 6px;
+            }
+
+            #editor {
+                font-size: 16px;
+                min-height: 300px;
+            }
+
+            .mobile-format-bar {
+                display: flex;
+            }
+
+            /* Mobile drawer for sidebars */
+            .sidebar-left.mobile-open,
+            .sidebar-right.mobile-open {
+                position: fixed;
+                top: 0;
+                bottom: 0;
+                width: min(280px, 85vw);
+                z-index: 50;
+                overflow: hidden;
+                transform: none;
+                opacity: 1;
+                display: flex;
+            }
+
+            .sidebar-left.mobile-open {
+                left: 0;
+                border-right: var(--rule);
+            }
+
+            .sidebar-right.mobile-open {
+                right: 0;
+                border-left: var(--rule);
+            }
+        }
+
+        /* Very small (≤380px) */
+        @media (max-width: 380px) {
+            .font-select {
+                width: 75px;
+            }
+
+            .tb-btn {
+                min-width: 28px;
+            }
+
+            .page {
+                padding: 16px 12px;
+            }
+
+            #editor {
+                font-size: 15px;
+            }
+        }
+
+        /* Landscape mobile */
+        @media (max-width: 600px) and (orientation: landscape) {
+            .editor-area {
+                padding-top: 8px;
+            }
+
+            .page {
+                min-height: 200px;
+            }
+        }
+
+        /* Print */
+        @media print {
+
+            .titlebar,
+            .menubar,
+            .toolbar,
+            .sidebar-left,
+            .sidebar-right,
+            .find-banner,
+            .ruler,
+            .word-count-bar,
+            .mobile-format-bar,
+            .reading-progress,
+            .toast,
+            .focus-exit {
+                display: none !important;
+            }
+
+            .main {
+                overflow: visible;
+                height: auto;
+            }
+
+            .editor-area {
+                overflow: visible;
+                padding: 0;
+                background: #fff;
+            }
+
+            .page {
+                box-shadow: none;
+                border-radius: 0;
+                width: 100%;
+                max-width: none;
+                padding: 0;
+            }
+
+            body {
+                overflow: auto;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Reading Progress Bar -->
+    <div class="reading-progress" id="readingProgress"></div>
+
+    <!-- Focus mode exit -->
+    <button class="focus-exit" onclick="toggleFocusMode()">✕ Exit Focus</button>
+
+    <!-- Drawer overlay -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="closeAllDrawers()"></div>
+
+    <!-- TITLE BAR -->
+    <div class="titlebar">
+        <button class="hamburger" id="hamburgerBtn" onclick="openMobileMenu()" aria-label="Menu">☰</button>
+        <div class="titlebar-logo">Word<span>Craft</span></div>
+        <div class="titlebar-filename" id="filename">Untitled Document — WordCraft v0.2</div>
+        <div class="titlebar-status" id="saveStatus">
+            <div class="status-dot"></div><span id="trackStatus">Saved</span>
+        </div>
+    </div>
+
+    <!-- MENU BAR (desktop) -->
+    <div class="menubar" id="menubar">
+        <div class="menu-item" data-menu="file">File
+            <div class="dropdown" id="dd-file">
+                <div class="dropdown-item" onclick="newDoc()">New <span class="shortcut">Ctrl+N</span></div>
+                <div class="dropdown-item" onclick="openDoc()">Open… <span class="shortcut">Ctrl+O</span></div>
+                <div class="dropdown-item" onclick="openDocxFile()">Import .docx… <span
+                        class="shortcut">Ctrl+Shift+O</span></div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="saveDoc()">Save <span class="shortcut">Ctrl+S</span></div>
+                <div class="dropdown-item" onclick="saveAsDoc()">Save As…</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="showExportModal()">Export… <span class="shortcut">Ctrl+E</span>
+                </div>
+                <div class="dropdown-item" onclick="exportPDF()">Print/PDF <span class="shortcut">Ctrl+P</span></div>
+            </div>
+        </div>
+        <div class="menu-item" data-menu="edit">Edit
+            <div class="dropdown" id="dd-edit">
+                <div class="dropdown-item" onclick="document.execCommand('undo')">Undo <span
+                        class="shortcut">Ctrl+Z</span></div>
+                <div class="dropdown-item" onclick="document.execCommand('redo')">Redo <span
+                        class="shortcut">Ctrl+Y</span></div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="document.execCommand('cut')">Cut <span
+                        class="shortcut">Ctrl+X</span></div>
+                <div class="dropdown-item" onclick="document.execCommand('copy')">Copy <span
+                        class="shortcut">Ctrl+C</span></div>
+                <div class="dropdown-item" onclick="document.execCommand('paste')">Paste <span
+                        class="shortcut">Ctrl+V</span></div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="document.execCommand('selectAll')">Select All <span
+                        class="shortcut">Ctrl+A</span></div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="toggleFind()">Find &amp; Replace… <span
+                        class="shortcut">Ctrl+H</span></div>
+            </div>
+        </div>
+        <div class="menu-item" data-menu="view">View
+            <div class="dropdown" id="dd-view">
+                <div class="dropdown-item" onclick="toggleSidebar('left')">Toggle Outline</div>
+                <div class="dropdown-item" onclick="toggleSidebar('right')">Toggle Properties</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="toggleFocusMode()">Focus Mode <span class="shortcut">F11</span>
+                </div>
+                <div class="dropdown-item" onclick="toggleDarkMode()">Dark Mode <span
+                        class="shortcut">Ctrl+Shift+D</span></div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="setZoom(75)">Zoom 75%</div>
+                <div class="dropdown-item" onclick="setZoom(100)">Zoom 100%</div>
+                <div class="dropdown-item" onclick="setZoom(125)">Zoom 125%</div>
+                <div class="dropdown-item" onclick="setZoom(150)">Zoom 150%</div>
+            </div>
+        </div>
+        <div class="menu-item" data-menu="insert">Insert
+            <div class="dropdown" id="dd-insert">
+                <div class="dropdown-item" onclick="showTableDialog()">Table…</div>
+                <div class="dropdown-item" onclick="insertImage()">Image…</div>
+                <div class="dropdown-item" onclick="insertHR()">Page Break</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="insertBlockquote()">Blockquote</div>
+                <div class="dropdown-item" onclick="insertCode()">Code Block</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="insertLink()">Hyperlink… <span class="shortcut">Ctrl+K</span></div>
+            </div>
+        </div>
+        <div class="menu-item" data-menu="format">Format
+            <div class="dropdown" id="dd-format">
+                <div class="dropdown-item" onclick="fmt('bold')">Bold <span class="shortcut">Ctrl+B</span></div>
+                <div class="dropdown-item" onclick="fmt('italic')">Italic <span class="shortcut">Ctrl+I</span></div>
+                <div class="dropdown-item" onclick="fmt('underline')">Underline <span class="shortcut">Ctrl+U</span>
+                </div>
+                <div class="dropdown-item" onclick="fmt('strikeThrough')">Strikethrough</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="setHeading(1)">Heading 1</div>
+                <div class="dropdown-item" onclick="setHeading(2)">Heading 2</div>
+                <div class="dropdown-item" onclick="setHeading(3)">Heading 3</div>
+            </div>
+        </div>
+        <div class="menu-item" data-menu="tools">Tools
+            <div class="dropdown" id="dd-tools">
+                <div class="dropdown-item" onclick="toggleSpellcheck()">Spell Check <span class="shortcut">F7</span>
+                </div>
+                <div class="dropdown-item" onclick="showWordCount()">Word Count…</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="toggleTrackChanges()">Track Changes</div>
+                <div class="dropdown-item" onclick="showTemplates()">Templates…</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="saveSnapshot()">Save Snapshot… <span
+                        class="shortcut">Ctrl+Shift+S</span></div>
+                <div class="dropdown-item"
+                    onclick="switchLeftTab(document.querySelector('.sidebar-tab:nth-child(3)'),'snapshots')">Manage
+                    Snapshots…</div>
+            </div>
+        </div>
+        <div class="menu-item" data-menu="help">Help
+            <div class="dropdown" id="dd-help">
+                <div class="dropdown-item" onclick="showAbout()">About WordCraft</div>
+                <div class="dropdown-item" onclick="showShortcuts()">Keyboard Shortcuts</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar" id="mainToolbar">
+        <button class="tb-btn" title="Undo (Ctrl+Z)" onclick="document.execCommand('undo')">↩</button>
+        <button class="tb-btn" title="Redo (Ctrl+Y)" onclick="document.execCommand('redo')">↪</button>
+        <div class="toolbar-sep"></div>
+        <select class="font-select" id="fontFamily" onchange="applyFont(this.value)" title="Font">
+            <option value="Lora, serif">Lora (Serif)</option>
+            <option value="'DM Sans', sans-serif">DM Sans</option>
+            <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="'Times New Roman', serif">Times New Roman</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="Verdana, sans-serif">Verdana</option>
+        </select>
+        <select class="size-select" id="fontSize" onchange="applySize(this.value)" title="Size">
+            <option>8</option>
+            <option>9</option>
+            <option>10</option>
+            <option>11</option>
+            <option selected>12</option>
+            <option>14</option>
+            <option>16</option>
+            <option>18</option>
+            <option>20</option>
+            <option>24</option>
+            <option>28</option>
+            <option>32</option>
+            <option>36</option>
+            <option>48</option>
+            <option>72</option>
+        </select>
+        <div class="toolbar-sep"></div>
+        <button class="tb-btn" id="btn-bold" title="Bold (Ctrl+B)" onclick="fmt('bold')"><b>B</b></button>
+        <button class="tb-btn" id="btn-italic" title="Italic (Ctrl+I)" onclick="fmt('italic')"><i>I</i></button>
+        <button class="tb-btn" id="btn-underline" title="Underline (Ctrl+U)"
+            onclick="fmt('underline')"><u>U</u></button>
+        <button class="tb-btn" id="btn-strike" title="Strikethrough" onclick="fmt('strikeThrough')"><s>S</s></button>
+        <div class="toolbar-sep"></div>
+        <div class="color-btn" title="Text Color">
+            <div class="color-swatch" id="colorSwatch"
+                style="background:#1a1a2e;color:#fff;font-size:9px;font-weight:700;">A</div>
+            <input type="color" value="#1a1a2e" id="colorPicker" onchange="applyColor(this.value)">
+        </div>
+        <div class="color-btn" title="Highlight" style="background:#fff8dc;">
+            <div class="color-swatch" style="font-size:9px;">🖊</div>
+            <input type="color" value="#fff176" id="highlightPicker" onchange="applyHighlight(this.value)">
+        </div>
+        <div class="toolbar-sep"></div>
+        <button class="tb-btn" title="Heading 1" onclick="setHeading(1)"
+            style="font-weight:700;font-size:11px;">H1</button>
+        <button class="tb-btn" title="Heading 2" onclick="setHeading(2)"
+            style="font-weight:700;font-size:10px;">H2</button>
+        <button class="tb-btn" title="Heading 3" onclick="setHeading(3)"
+            style="font-weight:700;font-size:10px;">H3</button>
+        <button class="tb-btn" title="Normal" onclick="setHeading(0)" style="font-size:11px;">¶</button>
+        <div class="toolbar-sep"></div>
+        <button class="tb-btn" id="btn-alignLeft" title="Align Left" onclick="fmt('justifyLeft')">≡</button>
+        <button class="tb-btn" id="btn-alignCenter" title="Center" onclick="fmt('justifyCenter')">☰</button>
+        <button class="tb-btn" id="btn-alignRight" title="Align Right" onclick="fmt('justifyRight')">≡</button>
+        <button class="tb-btn" id="btn-alignJustify" title="Justify" onclick="fmt('justifyFull')">▤</button>
+        <div class="toolbar-sep"></div>
+        <button class="tb-btn" title="Bullet List" onclick="fmt('insertUnorderedList')">• ≡</button>
+        <button class="tb-btn" title="Numbered List" onclick="fmt('insertOrderedList')">1. ≡</button>
+        <div class="toolbar-sep"></div>
+        <button class="tb-btn" title="Decrease Indent" onclick="fmt('outdent')">⇤</button>
+        <button class="tb-btn" title="Increase Indent" onclick="fmt('indent')">⇥</button>
+        <div class="toolbar-sep"></div>
+        <button class="tb-btn" title="Insert Link (Ctrl+K)" onclick="insertLink()">🔗</button>
+        <button class="tb-btn" title="Insert Table" onclick="showTableDialog()">⊞</button>
+        <button class="tb-btn" title="Insert Image" onclick="insertImage()">🖼</button>
+        <button class="tb-btn" title="Find & Replace (Ctrl+H)" onclick="toggleFind()">🔍</button>
+        <div class="toolbar-sep"></div>
+        <button class="tb-btn" title="Track Changes" onclick="toggleTrackChanges()" style="font-size:10px;">📝±</button>
+        <button class="tb-btn" title="Focus Mode (F11)" onclick="toggleFocusMode()" style="font-size:13px;">⧗</button>
+        <button class="tb-btn" title="Dark Mode" onclick="toggleDarkMode()" style="font-size:13px;">◑</button>
+        <button class="tb-btn" title="Clear Formatting" onclick="fmt('removeFormat')"
+            style="font-size:11px;">✕A</button>
+        <div class="toolbar-sep"></div>
+        <button class="tb-btn" title="Import .docx" onclick="openDocxFile()"
+            style="font-size:11px;font-weight:700;color:#2563eb;">⬆ .docx</button>
+        <button class="tb-btn" title="Export (Ctrl+E)" onclick="showExportModal()"
+            style="font-size:11px;font-weight:700;color:#16a34a;">⬇ .docx</button>
+    </div>
+
+    <!-- FIND & REPLACE -->
+    <div class="find-banner" id="findBanner">
+        <span style="font-size:12px;color:var(--muted);">Find:</span>
+        <input class="find-input" id="findInput" placeholder="Search…" oninput="doFind()">
+        <span style="font-size:12px;color:var(--muted);">Replace:</span>
+        <input class="find-input" id="replaceInput" placeholder="Replace with…" style="width:130px;">
+        <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px;" onclick="doReplace()">Replace</button>
+        <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px;" onclick="doReplaceAll()">All</button>
+        <span class="find-count" id="findCount"></span>
+        <span class="find-close" onclick="toggleFind()">✕</span>
+    </div>
+
+    <!-- RULER -->
+    <div class="ruler" id="rulerEl">
+        <div class="ruler-inner" id="rulerInner"></div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+
+        <!-- LEFT SIDEBAR -->
+        <div class="sidebar-left" id="sidebarLeft">
+            <div class="sidebar-tabs">
+                <div class="sidebar-tab active" onclick="switchLeftTab(this,'outline')">Outline</div>
+                <div class="sidebar-tab" onclick="switchLeftTab(this,'pages')">Pages</div>
+                <div class="sidebar-tab" onclick="switchLeftTab(this,'snapshots')">Snapshots</div>
+            </div>
+            <div class="sidebar-content" id="outlinePanel"></div>
+            <div class="sidebar-content" id="pagesPanel"
+                style="display:none;padding:12px;font-size:12px;color:var(--muted);">Pages view coming soon</div>
+            <div class="sidebar-content" id="snapshotsPanel" style="display:none;padding:8px;">
+                <div style="display:flex;gap:4px;margin-bottom:8px;">
+                    <input id="snapshotName" placeholder="Snapshot name…"
+                        style="flex:1;border:var(--rule);border-radius:4px;padding:4px 8px;font-size:11px;font-family:'DM Sans',sans-serif;outline:none;">
+                    <button onclick="saveSnapshot()"
+                        style="background:var(--ink);color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:10px;cursor:pointer;font-family:'DM Sans',sans-serif;">💾
+                        Save</button>
+                </div>
+                <div id="snapshotsList" style="font-size:11px;"></div>
+            </div>
+            <div class="writing-stats-widget">
+                <div class="stat-row"><span>Words</span><span class="stat-val" id="slWords">0</span></div>
+                <div class="stat-row"><span>Read time</span><span class="stat-val" id="slRead">0 min</span></div>
+                <div class="stat-row"><span>Readability</span><span class="stat-val" id="slReadability">—</span></div>
+                <div class="reading-bar">
+                    <div class="reading-fill" id="readingFill" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EDITOR -->
+        <div class="editor-area" id="editorArea">
+            <div class="word-count-bar" id="wordCountBar">
+                <span id="wcWords">Words: 0</span>
+                <span>·</span>
+                <span id="wcChars">Chars: 0</span>
+                <span>·</span>
+                <span id="wcPages">~1 page</span>
+            </div>
+            <div class="page" onclick="document.getElementById('editor').focus()">
+                <div id="editor" contenteditable="true" spellcheck="true">
+                    <h1>Welcome to WordCraft ✍</h1>
+                    <p>WordCraft is a free, open-source word processor built for writers, developers, and teams who need
+                        professional document editing without subscriptions or data collection.</p>
+                    <h2>✦ Key Features</h2>
+                    <ul>
+                        <li><strong>Rich formatting</strong> — Bold, italic, underline, colors, highlights</li>
+                        <li><strong>AI Writing Assistant</strong> — Summarize, rewrite, expand any selection</li>
+                        <li><strong>Focus Mode</strong> — Distraction-free writing environment</li>
+                        <li><strong>Dark Mode</strong> — Easy on the eyes for night writing</li>
+                        <li><strong>Mobile-First</strong> — Full editing on phone or tablet</li>
+                        <li><strong>Track Changes</strong> — Review and accept/reject edits</li>
+                        <li><strong>Privacy-first</strong> — No telemetry, no account required</li>
+                    </ul>
+                    <h2>✦ Getting Started</h2>
+                    <p>Click anywhere and start typing. Use the toolbar for formatting, or use keyboard shortcuts.
+                        Select text to see the floating mobile toolbar on phones.</p>
+                    <blockquote>Tip: Use Focus Mode (F11 or ⧗ button) for a distraction-free writing environment.
+                    </blockquote>
+                    <p style="color:#999;font-size:13px;margin-top:32px;font-style:italic;">— WordCraft v0.2 · Open
+                        Source · Mobile Optimized</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR -->
+        <div class="sidebar-right" id="sidebarRight">
+            <div class="right-tab-bar">
+                <div class="right-tab active" onclick="switchRightTab(this,'styles')">Styles</div>
+                <div class="right-tab" onclick="switchRightTab(this,'ai')">AI</div>
+                <div class="right-tab" onclick="switchRightTab(this,'comments')">Notes</div>
+                <div class="right-tab" onclick="switchRightTab(this,'props')">Props</div>
+            </div>
+
+            <!-- Styles Panel -->
+            <div class="right-panel active" id="panel-styles">
+                <div class="prop-label">Paragraph Style</div>
+                <div class="style-grid">
+                    <div class="style-tile h1-tile" onclick="setHeading(1)">Heading 1</div>
+                    <div class="style-tile h2-tile" onclick="setHeading(2)">Heading 2</div>
+                    <div class="style-tile" onclick="setHeading(3)" style="font-weight:600;font-size:12px;">Heading 3
+                    </div>
+                    <div class="style-tile" onclick="setHeading(0)" style="font-family:'Lora',serif;">Normal</div>
+                    <div class="style-tile" onclick="document.execCommand('formatBlock',false,'blockquote')"
+                        style="font-style:italic;color:#888;">Quote</div>
+                    <div class="style-tile" onclick="document.execCommand('formatBlock',false,'pre')"
+                        style="font-family:'JetBrains Mono',monospace;font-size:10px;">Code</div>
+                </div>
+                <div class="prop-label" style="margin-top:12px;">Character</div>
+                <div class="prop-row"><span>Bold</span><input type="checkbox" id="chkBold" onchange="fmt('bold')"></div>
+                <div class="prop-row"><span>Italic</span><input type="checkbox" id="chkItalic" onchange="fmt('italic')">
+                </div>
+                <div class="prop-row"><span>Underline</span><input type="checkbox" id="chkUnderline"
+                        onchange="fmt('underline')"></div>
+                <div class="prop-label" style="margin-top:12px;">Alignment</div>
+                <div style="display:flex;gap:4px;">
+                    <button class="prop-btn" onclick="fmt('justifyLeft')">≡</button>
+                    <button class="prop-btn" onclick="fmt('justifyCenter')">☰</button>
+                    <button class="prop-btn" onclick="fmt('justifyRight')">≡</button>
+                    <button class="prop-btn" onclick="fmt('justifyFull')">▤</button>
+                </div>
+            </div>
+
+            <!-- AI Panel — Dual Backend (WebLLM + Transformers.js) -->
+            <div class="right-panel" id="panel-ai">
+                <div class="prop-label">✨ AI Writing Assistant</div>
+
+                <!-- Status Bar -->
+                <div class="ai-status-bar" id="aiStatusBar">
+                    <div class="ai-status-dot checking" id="aiStatusDot"></div>
+                    <div class="ai-status-text" id="aiStatusText">Detecting AI backend…</div>
+                    <div class="ai-status-badge badge-none" id="aiStatusBadge">—</div>
+                </div>
+
+                <!-- No Support Message -->
+                <div class="ai-no-support" id="aiNoSupport">
+                    ⚠️ <strong>AI unavailable</strong><br>
+                    Your browser doesn't support WebGPU or WebAssembly at the required level.<br><br>
+                    Try <strong>Chrome 113+</strong> or <strong>Edge 113+</strong> on desktop for full AI support.
+                </div>
+
+                <!-- Model Selector (shown once backend is detected) -->
+                <select class="ai-model-selector" id="aiModelSelector" onchange="onModelChange(this.value)">
+                    <optgroup label="⚡ Fast (WebLLM — GPU)">
+                        <option value="webllm:Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5 Mini · 2.4GB · Best quality
+                        </option>
+                        <option value="webllm:Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama 3.2 3B · 2.0GB · Balanced
+                        </option>
+                        <option value="webllm:TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC">TinyLlama 1.1B · 0.7GB · Fastest
+                        </option>
+                    </optgroup>
+                    <optgroup label="🌐 Universal (Transformers.js — CPU)">
+                        <option value="transformers:Xenova/flan-t5-small">Flan-T5 Small · 80MB · Summarize/Fix</option>
+                        <option value="transformers:Xenova/distilbart-cnn-6-6">DistilBART · 320MB · Summarization
+                        </option>
+                        <option value="transformers:Xenova/flan-t5-base">Flan-T5 Base · 250MB · Better quality</option>
+                    </optgroup>
+                </select>
+
+                <!-- Download / Init Area -->
+                <div class="ai-download-area" id="aiDownloadArea">
+                    <div class="ai-download-title" id="aiDownloadTitle">Load AI Model</div>
+                    <div class="ai-download-sub" id="aiDownloadSub">Downloaded once, cached forever in your browser
+                    </div>
+                    <div class="ai-progress-wrap">
+                        <div class="ai-progress-fill" id="aiProgressFill"></div>
+                    </div>
+                    <div class="ai-progress-label" id="aiProgressLabel">Ready to download</div>
+                    <button class="ai-download-btn" id="aiDownloadBtn" onclick="loadSelectedModel()">⬇ Load
+                        Model</button>
+                </div>
+
+                <!-- Prompt + Chips (shown when model is ready) -->
+                <div id="aiActiveArea" style="display:none;">
+                    <p style="font-size:10px;color:var(--muted);margin-bottom:6px;">Select text in the doc, or describe
+                        what you need:</p>
+                    <textarea class="ai-panel-input" id="aiPromptInput"
+                        placeholder="e.g. Make this more formal, explain simply, expand…" rows="3"></textarea>
+                    <div class="ai-chips-row">
+                        <span class="ai-chip" onclick="aiQuickAction('summarize')">📋 Summarize</span>
+                        <span class="ai-chip" onclick="aiQuickAction('expand')">📝 Expand</span>
+                        <span class="ai-chip" onclick="aiQuickAction('formal')">👔 Formalize</span>
+                        <span class="ai-chip" onclick="aiQuickAction('casual')">😊 Casualize</span>
+                        <span class="ai-chip" onclick="aiQuickAction('fix')">✅ Fix Grammar</span>
+                        <span class="ai-chip" onclick="aiQuickAction('bullets')">• Bullets</span>
+                        <span class="ai-chip" onclick="aiQuickAction('shorter')">✂️ Shorten</span>
+                        <span class="ai-chip" onclick="aiQuickAction('explain')">💡 Explain</span>
+                    </div>
+                    <button class="ai-run-btn" id="aiRunBtn" onclick="runAIAssist()">
+                        <span>✨</span><span id="aiRunLabel">Run Assistant</span>
+                    </button>
+                    <div class="ai-response" id="aiResponse">
+                        <div class="ai-response-label">✨ Suggestion</div>
+                        <div class="ai-response-text" id="aiResponseText"></div>
+                        <div class="ai-response-actions" id="aiResponseActions"></div>
+                    </div>
+                    <div class="ai-history" id="aiHistory">
+                        <div class="ai-history-title">Recent</div>
+                        <div id="aiHistoryList"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Comments Panel -->
+            <div class="right-panel" id="panel-comments">
+                <div class="prop-label">Comments</div>
+                <div class="comment-card">
+                    <div class="comment-author">Alex M.</div>
+                    <div class="comment-time">Today, 9:41 AM</div>
+                    <div class="comment-text">Should we expand the Format Compatibility section to include RTF and ePub?
+                    </div>
+                    <div class="comment-actions">
+                        <button class="comment-btn">Reply</button>
+                        <button class="comment-btn" onclick="this.closest('.comment-card').remove()">Resolve ✓</button>
+                    </div>
+                </div>
+                <div class="add-comment-area">
+                    <div class="prop-label">Add Note</div>
+                    <textarea placeholder="Type a comment…" id="newCommentText"></textarea>
+                    <button class="add-comment-btn" onclick="addComment()">Add Comment</button>
+                </div>
+            </div>
+
+            <!-- Properties Panel -->
+            <div class="right-panel" id="panel-props">
+                <div class="prop-section">
+                    <div class="prop-label">Document</div>
+                    <div class="prop-row"><span>Zoom</span>
+                        <div class="prop-control">
+                            <button class="prop-btn" onclick="adjustZoom(-10)">−</button>
+                            <input class="prop-input" id="zoomInput" value="100" style="width:44px;" readonly>
+                            <button class="prop-btn" onclick="adjustZoom(10)">+</button>
+                        </div>
+                    </div>
+                    <div class="prop-row"><span>Spellcheck</span><input type="checkbox" id="spellToggle" checked
+                            onchange="toggleSpellcheck()"></div>
+                    <div class="prop-row"><span>Track Changes</span><input type="checkbox" id="trackToggle"
+                            onchange="toggleTrackChanges()"></div>
+                    <div class="prop-row"><span>Dark Mode</span><input type="checkbox" id="darkToggle"
+                            onchange="toggleDarkMode()"></div>
+                    <div class="prop-row"><span>Focus Mode</span><input type="checkbox" id="focusToggle"
+                            onchange="toggleFocusMode()"></div>
+                </div>
+                <div class="prop-section">
+                    <div class="prop-label">Page</div>
+                    <div class="prop-row"><span>Size</span>
+                        <select class="prop-select" style="width:90px;" onchange="setPageSize(this.value)">
+                            <option>US Letter</option>
+                            <option>A4</option>
+                            <option>Legal</option>
+                        </select>
+                    </div>
+                    <div class="prop-row"><span>Orientation</span>
+                        <select class="prop-select" style="width:90px;" onchange="setOrientation(this.value)">
+                            <option>Portrait</option>
+                            <option>Landscape</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="prop-section">
+                    <div class="prop-label">Statistics</div>
+                    <div class="prop-row"><span>Words</span><span id="statWords">—</span></div>
+                    <div class="prop-row"><span>Characters</span><span id="statChars">—</span></div>
+                    <div class="prop-row"><span>Paragraphs</span><span id="statParas">—</span></div>
+                    <div class="prop-row"><span>Pages (est.)</span><span id="statPages">—</span></div>
+                    <div class="prop-row"><span>Read time</span><span id="statRead">—</span></div>
+                </div>
+                <div class="prop-section">
+                    <div class="prop-label">AI Model Cache</div>
+                    <div style="font-size:11px;color:var(--muted);margin-bottom:6px;" id="aiCacheInfo">No model cached
+                    </div>
+                    <button class="prop-btn" style="width:100%;font-size:10px;padding:4px 8px;"
+                        onclick="clearAICache()">🗑 Clear AI Cache</button>
+                </div>
+                <div class="prop-section">
+                    <div class="prop-label">Writing Goal</div>
+                    <div class="prop-row">
+                        <span>Daily target</span>
+                        <input type="number" id="writingGoalInput" value="500" min="100" max="10000" step="100"
+                            style="width:64px;border:var(--rule);border-radius:4px;padding:2px 4px;font-size:11px;text-align:center;"
+                            onchange="updateWritingGoal(this.value)">
+                    </div>
+                    <div style="margin-top:6px;">
+                        <div
+                            style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px;">
+                            <span id="goalProgressLabel">0 / 500 words</span><span id="goalPct">0%</span>
+                        </div>
+                        <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
+                            <div id="goalBar"
+                                style="height:100%;background:linear-gradient(90deg,#27ae60,#2ecc71);border-radius:3px;width:0%;transition:width 0.4s;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOBILE FORMAT BAR -->
+    <div class="mobile-format-bar" id="mobileFormatBar">
+        <button class="mfb-btn" onclick="fmt('bold')" title="Bold"><b>B</b></button>
+        <button class="mfb-btn" onclick="fmt('italic')" title="Italic"><i>I</i></button>
+        <button class="mfb-btn" onclick="fmt('underline')" title="Underline"><u>U</u></button>
+        <div class="mfb-sep"></div>
+        <button class="mfb-btn" onclick="setHeading(1)" title="H1" style="font-size:11px;font-weight:700;">H1</button>
+        <button class="mfb-btn" onclick="setHeading(2)" title="H2" style="font-size:10px;font-weight:700;">H2</button>
+        <div class="mfb-sep"></div>
+        <button class="mfb-btn" onclick="fmt('insertUnorderedList')" title="Bullet">• ≡</button>
+        <button class="mfb-btn" onclick="fmt('insertOrderedList')" title="Number">1≡</button>
+        <div class="mfb-sep"></div>
+        <button class="mfb-btn" onclick="insertLink()" title="Link">🔗</button>
+        <button class="mfb-btn" onclick="insertImage()" title="Image">🖼</button>
+        <div class="mfb-sep"></div>
+        <button class="mfb-btn" onclick="toggleMobileSidebar('right')" title="Panel">⚙</button>
+    </div>
+
+    <!-- ── MODALS ── -->
+
+    <!-- TABLE DIALOG -->
+    <div class="modal-overlay" id="tableModal">
+        <div class="modal" style="max-width:320px;">
+            <div class="modal-header">
+                <div class="modal-title">⊞ Insert Table</div>
+                <button class="modal-close" onclick="closeModal('tableModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Hover to select size, or enter
+                    manually:</p>
+                <div class="table-grid" id="tableGrid"></div>
+                <div style="display:flex;gap:10px;align-items:center;margin-top:10px;font-size:12px;">
+                    <span>Rows:</span><input type="number" id="tableRows" value="3" min="1" max="20" style="width:52px;"
+                        class="form-input">
+                    <span>Cols:</span><input type="number" id="tableCols" value="3" min="1" max="10" style="width:52px;"
+                        class="form-input">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('tableModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="insertTable()">Insert</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LINK MODAL -->
+    <div class="modal-overlay" id="linkModal">
+        <div class="modal" style="max-width:380px;">
+            <div class="modal-header">
+                <div class="modal-title">🔗 Insert Link</div>
+                <button class="modal-close" onclick="closeModal('linkModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-label">Display Text</div>
+                    <input class="form-input" id="linkText" placeholder="Link text…">
+                </div>
+                <div class="form-row">
+                    <div class="form-label">URL</div>
+                    <input class="form-input" id="linkURL" placeholder="https://…" type="url">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('linkModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="doInsertLink()">Insert</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WORD COUNT MODAL -->
+    <div class="modal-overlay" id="wordCountModal">
+        <div class="modal" style="max-width:320px;">
+            <div class="modal-header">
+                <div class="modal-title">📊 Document Statistics</div>
+                <button class="modal-close" onclick="closeModal('wordCountModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="wc-stat"><span>Words</span><span class="wc-val" id="wcModalWords">0</span></div>
+                <div class="wc-stat"><span>Characters (with spaces)</span><span class="wc-val"
+                        id="wcModalChars">0</span></div>
+                <div class="wc-stat"><span>Characters (no spaces)</span><span class="wc-val"
+                        id="wcModalNoSpaces">0</span></div>
+                <div class="wc-stat"><span>Paragraphs</span><span class="wc-val" id="wcModalParas">0</span></div>
+                <div class="wc-stat"><span>Sentences</span><span class="wc-val" id="wcModalSents">0</span></div>
+                <div class="wc-stat"><span>Estimated pages</span><span class="wc-val" id="wcModalPages">1</span></div>
+                <div class="wc-stat"><span>Reading time</span><span class="wc-val" id="wcModalRead">
+                        < 1 min</span>
+                </div>
+                <div class="wc-stat"><span>Avg. word length</span><span class="wc-val" id="wcModalAvg">—</span></div>
+                <div class="wc-stat"><span>Readability</span><span class="wc-val" id="wcModalFlesch">—</span></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal('wordCountModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHORTCUTS MODAL -->
+    <div class="modal-overlay" id="shortcutsModal">
+        <div class="modal" style="max-width:420px;">
+            <div class="modal-header">
+                <div class="modal-title">⌨ Keyboard Shortcuts</div>
+                <button class="modal-close" onclick="closeModal('shortcutsModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="prop-label" style="margin-bottom:8px;">File</div>
+                <div class="shortcut-row"><span>New</span><span class="shortcut-key">Ctrl+N</span></div>
+                <div class="shortcut-row"><span>Open</span><span class="shortcut-key">Ctrl+O</span></div>
+                <div class="shortcut-row"><span>Save</span><span class="shortcut-key">Ctrl+S</span></div>
+                <div class="shortcut-row"><span>Export</span><span class="shortcut-key">Ctrl+E</span></div>
+                <div class="prop-label" style="margin:12px 0 8px;">Edit</div>
+                <div class="shortcut-row"><span>Undo</span><span class="shortcut-key">Ctrl+Z</span></div>
+                <div class="shortcut-row"><span>Redo</span><span class="shortcut-key">Ctrl+Y</span></div>
+                <div class="shortcut-row"><span>Find &amp; Replace</span><span class="shortcut-key">Ctrl+H</span></div>
+                <div class="shortcut-row"><span>Insert Link</span><span class="shortcut-key">Ctrl+K</span></div>
+                <div class="prop-label" style="margin:12px 0 8px;">Formatting</div>
+                <div class="shortcut-row"><span>Bold</span><span class="shortcut-key">Ctrl+B</span></div>
+                <div class="shortcut-row"><span>Italic</span><span class="shortcut-key">Ctrl+I</span></div>
+                <div class="shortcut-row"><span>Underline</span><span class="shortcut-key">Ctrl+U</span></div>
+                <div class="prop-label" style="margin:12px 0 8px;">View</div>
+                <div class="shortcut-row"><span>Focus Mode</span><span class="shortcut-key">F11</span></div>
+                <div class="shortcut-row"><span>Dark Mode</span><span class="shortcut-key">Ctrl+Shift+D</span></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal('shortcutsModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABOUT MODAL -->
+    <div class="modal-overlay" id="aboutModal">
+        <div class="modal" style="max-width:340px;">
+            <div class="modal-header">
+                <div class="modal-title">About WordCraft</div>
+                <button class="modal-close" onclick="closeModal('aboutModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="about-logo">Word<span>Craft</span></div>
+                <div class="about-version">Version 0.2 · Open Source</div>
+                <p style="font-size:12.5px;line-height:1.6;color:#555;">A free, privacy-first word processor for writers
+                    and developers. No subscriptions, no data collection, works offline.</p>
+                <div
+                    style="margin-top:12px;padding:10px;background:var(--cream);border-radius:6px;font-size:11px;color:var(--muted);line-height:1.8;">
+                    ✦ mammoth.js · Rich Text Engine<br>
+                    ✦ Mobile-optimized UI v0.2<br>
+                    ✦ AI Writing Assistant (built-in)<br>
+                    ✦ Privacy-first, no telemetry
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="closeModal('aboutModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOCX IMPORT MODAL -->
+    <div class="modal-overlay" id="docxImportModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">⬆ Import .docx File</div>
+                <button class="modal-close" onclick="closeModal('docxImportModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="docx-drop-zone" id="docxDropZone">
+                    <input type="file" id="docxFileInput"
+                        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onchange="handleDocxFile(this.files[0])">
+                    <div class="docx-drop-icon">📄</div>
+                    <div class="docx-drop-title">Drop your .docx file here</div>
+                    <div class="docx-drop-sub">or tap to browse — Word, Google Docs, LibreOffice</div>
+                </div>
+                <div class="docx-progress" id="docxProgress">
+                    <span style="white-space:nowrap;font-size:12px;" id="docxProgressLabel">Parsing…</span>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar-fill" id="docxProgressBar" style="width:0%"></div>
+                    </div>
+                </div>
+                <div class="docx-warnings" id="docxWarnings"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('docxImportModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOCX EXPORT MODAL -->
+    <div class="modal-overlay" id="docxExportModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">💾 Export Document</div>
+                <button class="modal-close" onclick="closeModal('docxExportModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="prop-label">Choose format</div>
+                <div class="export-options">
+                    <div class="export-option selected" id="expOptDocx" onclick="selectExportFmt('docx')">
+                        <div class="export-option-icon">📝</div>
+                        <div>
+                            <div class="export-option-label">.docx — Microsoft Word</div>
+                            <div class="export-option-desc">Full formatting, tables, images. Opens in Word, LibreOffice,
+                                Google Docs.</div>
+                        </div>
+                    </div>
+                    <div class="export-option" id="expOptHtml" onclick="selectExportFmt('html')">
+                        <div class="export-option-icon">🌐</div>
+                        <div>
+                            <div class="export-option-label">.html — Web Page</div>
+                            <div class="export-option-desc">Preserves all styling. Open in any browser.</div>
+                        </div>
+                    </div>
+                    <div class="export-option" id="expOptMd" onclick="selectExportFmt('md')">
+                        <div class="export-option-icon">📋</div>
+                        <div>
+                            <div class="export-option-label">.md — Markdown</div>
+                            <div class="export-option-desc">Clean Markdown for GitHub, Notion, Obsidian.</div>
+                        </div>
+                    </div>
+                    <div class="export-option" id="expOptTxt" onclick="selectExportFmt('txt')">
+                        <div class="export-option-icon">📃</div>
+                        <div>
+                            <div class="export-option-label">.txt — Plain Text</div>
+                            <div class="export-option-desc">Strips all formatting. Universal compatibility.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="docx-export-settings" id="docxSettings">
+                    <div class="prop-label" style="margin-top:12px;">Settings</div>
+                    <div class="docx-setting-row">
+                        <span>Filename</span>
+                        <input type="text" id="exportFilename" value="wordcraft-document"
+                            style="border:var(--rule);border-radius:4px;padding:3px 8px;font-size:12px;width:160px;outline:none;font-family:'DM Sans',sans-serif;">
+                    </div>
+                    <div class="docx-setting-row">
+                        <span>Page Size</span>
+                        <select id="exportPageSize"
+                            style="border:var(--rule);border-radius:4px;padding:3px 6px;font-size:12px;background:#fff;outline:none;">
+                            <option>US Letter</option>
+                            <option>A4</option>
+                            <option>Legal</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('docxExportModal')">Cancel</button>
+                <button class="btn btn-primary" id="exportBtn" onclick="doExport()">⬇ Export</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TEMPLATES MODAL -->
+    <div class="modal-overlay" id="templatesModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">📄 Document Templates</div>
+                <button class="modal-close" onclick="closeModal('templatesModal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="template-grid">
+                    <div class="template-card" onclick="applyTemplate('blank')">
+                        <div class="template-icon">📄</div>
+                        <div class="template-name">Blank</div>
+                        <div class="template-desc">Start fresh</div>
+                    </div>
+                    <div class="template-card" onclick="applyTemplate('letter')">
+                        <div class="template-icon">✉️</div>
+                        <div class="template-name">Letter</div>
+                        <div class="template-desc">Formal letter</div>
+                    </div>
+                    <div class="template-card" onclick="applyTemplate('report')">
+                        <div class="template-icon">📊</div>
+                        <div class="template-name">Report</div>
+                        <div class="template-desc">Business report</div>
+                    </div>
+                    <div class="template-card" onclick="applyTemplate('resume')">
+                        <div class="template-icon">👤</div>
+                        <div class="template-name">Resume</div>
+                        <div class="template-desc">Professional CV</div>
+                    </div>
+                    <div class="template-card" onclick="applyTemplate('blog')">
+                        <div class="template-icon">📝</div>
+                        <div class="template-name">Blog Post</div>
+                        <div class="template-desc">Article / post</div>
+                    </div>
+                    <div class="template-card" onclick="applyTemplate('meeting')">
+                        <div class="template-icon">📋</div>
+                        <div class="template-name">Meeting Notes</div>
+                        <div class="template-desc">Minutes template</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('templatesModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOBILE MENU MODAL -->
+    <div class="modal-overlay" id="mobileMenuModal">
+        <div class="modal"
+            style="max-width:280px;max-height:80vh;margin-left:0;margin-top:auto;margin-bottom:auto;border-radius:10px;">
+            <div class="modal-header">
+                <div class="modal-title">Word<span style="color:var(--accent)">Craft</span> Menu</div>
+                <button class="modal-close" onclick="closeModal('mobileMenuModal')">✕</button>
+            </div>
+            <div class="modal-body" style="padding:8px 0;">
+                <div
+                    style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding:8px 16px 4px;">
+                    File</div>
+                <div class="dropdown-item" onclick="newDoc();closeModal('mobileMenuModal')">New Document</div>
+                <div class="dropdown-item" onclick="openDoc();closeModal('mobileMenuModal')">Open…</div>
+                <div class="dropdown-item" onclick="openDocxFile();closeModal('mobileMenuModal')">Import .docx…</div>
+                <div class="dropdown-item" onclick="saveDoc();closeModal('mobileMenuModal')">Save</div>
+                <div class="dropdown-item" onclick="showExportModal();closeModal('mobileMenuModal')">Export…</div>
+                <div class="dropdown-sep"></div>
+                <div
+                    style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding:8px 16px 4px;">
+                    Tools</div>
+                <div class="dropdown-item" onclick="toggleFind();closeModal('mobileMenuModal')">Find &amp; Replace</div>
+                <div class="dropdown-item" onclick="showWordCount();closeModal('mobileMenuModal')">Word Count</div>
+                <div class="dropdown-item" onclick="toggleTrackChanges();closeModal('mobileMenuModal')">Track Changes
+                </div>
+                <div class="dropdown-item" onclick="showTemplates();closeModal('mobileMenuModal')">Templates</div>
+                <div class="dropdown-sep"></div>
+                <div
+                    style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);padding:8px 16px 4px;">
+                    View</div>
+                <div class="dropdown-item" onclick="toggleFocusMode();closeModal('mobileMenuModal')">Focus Mode</div>
+                <div class="dropdown-item" onclick="toggleDarkMode();closeModal('mobileMenuModal')">Dark Mode</div>
+                <div class="dropdown-item" onclick="toggleMobileSidebar('left');closeModal('mobileMenuModal')">Document
+                    Outline</div>
+                <div class="dropdown-sep"></div>
+                <div class="dropdown-item" onclick="showAbout();closeModal('mobileMenuModal')">About</div>
+                <div class="dropdown-item" onclick="showShortcuts();closeModal('mobileMenuModal')">Keyboard Shortcuts
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- Scroll Navigation -->
+    <div class="scroll-nav" id="scrollNav">
+        <button class="scroll-nav-btn" onclick="scrollToTop()" title="Top">↑</button>
+        <button class="scroll-nav-btn" onclick="scrollToBottom()" title="Bottom">↓</button>
+    </div>
+
+    <!-- Context Selection Toolbar -->
+    <div class="context-toolbar" id="contextToolbar">
+        <button class="ctx-btn" onclick="fmt('bold')"><b>B</b></button>
+        <button class="ctx-btn" onclick="fmt('italic')"><i>I</i></button>
+        <button class="ctx-btn" onclick="fmt('underline')"><u>U</u></button>
+        <div class="ctx-sep"></div>
+        <button class="ctx-btn" onclick="insertLink()">🔗</button>
+        <div class="ctx-sep"></div>
+        <button class="ctx-btn ai-ctx" onclick="ctxAIAssist('fix')">✅ Fix</button>
+        <button class="ctx-btn ai-ctx" onclick="ctxAIAssist('formal')">👔</button>
+        <button class="ctx-btn ai-ctx" onclick="ctxAIAssist('shorter')">✂️</button>
+        <div class="ctx-sep"></div>
+        <button class="ctx-btn" onclick="document.execCommand('copy');hideContextToolbar()">📋</button>
+    </div>
+
+    <script>
+        'use strict';
+        // ══════════════════════════════════════════════
+        //  WORDCRAFT v0.2 — Core Engine
+        // ══════════════════════════════════════════════
+        const editor = document.getElementById('editor');
+        let trackChanges = false;
+        let focusMode = false;
+        let darkMode = false;
+        let findOpen = false;
+        let currentExportFmt = 'docx';
+        let currentZoom = 100;
+
+        // ── FORMAT ──
+        function fmt(cmd) {
+            editor.focus();
+            document.execCommand(cmd, false, null);
+            updateFormatState();
+        }
+
+        function applyFont(val) {
+            editor.focus();
+            document.execCommand('fontName', false, val);
+        }
+        function applySize(val) {
+            editor.focus();
+            document.execCommand('fontSize', false, '7');
+            const spans = editor.querySelectorAll('font[size="7"]');
+            spans.forEach(s => { s.removeAttribute('size'); s.style.fontSize = val + 'px'; });
+        }
+        function applyColor(val) {
+            editor.focus();
+            document.execCommand('foreColor', false, val);
+            document.getElementById('colorSwatch').style.background = val;
+            document.getElementById('colorSwatch').style.color = '#fff';
+        }
+        function applyHighlight(val) {
+            editor.focus();
+            document.execCommand('hiliteColor', false, val);
+        }
+        function setHeading(lvl) {
+            editor.focus();
+            document.execCommand('formatBlock', false, lvl === 0 ? 'p' : 'h' + lvl);
+        }
+        function applyStyle(style) {
+            editor.focus();
+            if (style === 'blockquote') document.execCommand('formatBlock', false, 'blockquote');
+            else if (style === 'code') document.execCommand('formatBlock', false, 'pre');
+            else document.execCommand('formatBlock', false, 'p');
+        }
+
+        // ── FORMAT STATE ──
+        function updateFormatState() {
+            try {
+                document.getElementById('btn-bold').classList.toggle('active', document.queryCommandState('bold'));
+                document.getElementById('btn-italic').classList.toggle('active', document.queryCommandState('italic'));
+                document.getElementById('btn-underline').classList.toggle('active', document.queryCommandState('underline'));
+                document.getElementById('btn-strike').classList.toggle('active', document.queryCommandState('strikeThrough'));
+                document.getElementById('chkBold').checked = document.queryCommandState('bold');
+                document.getElementById('chkItalic').checked = document.queryCommandState('italic');
+                document.getElementById('chkUnderline').checked = document.queryCommandState('underline');
+            } catch (e) { }
+        }
+        editor.addEventListener('keyup', updateFormatState);
+        editor.addEventListener('mouseup', updateFormatState);
+        editor.addEventListener('touchend', updateFormatState);
+
+        // ── WORD COUNT ──
+        let writingGoal = parseInt(localStorage.getItem('wc_goal') || '500');
+
+        function updateWordCount() {
+            const text = editor.innerText || '';
+            const words = text.trim() ? text.trim().split(/\s+/).filter(w => w.length > 0).length : 0;
+            const chars = text.length;
+            const pages = Math.max(1, Math.ceil(words / 250));
+            const readMin = Math.max(1, Math.round(words / 200));
+
+            document.getElementById('wcWords').textContent = 'Words: ' + words.toLocaleString();
+            document.getElementById('wcChars').textContent = 'Chars: ' + chars.toLocaleString();
+            document.getElementById('wcPages').textContent = '~' + pages + ' page' + (pages !== 1 ? 's' : '');
+
+            document.getElementById('statWords').textContent = words.toLocaleString();
+            document.getElementById('statChars').textContent = chars.toLocaleString();
+            const paras = editor.querySelectorAll('p,h1,h2,h3,h4,h5,h6').length;
+            document.getElementById('statParas').textContent = paras;
+            document.getElementById('statPages').textContent = '~' + pages;
+            document.getElementById('statRead').textContent = readMin + ' min';
+
+            // Readability score in sidebar
+            const sents = (text.match(/[.!?]+/g) || []).length || 1;
+            const syllables = text.split(/[aeiouAEIOU]/).length - 1;
+            const flesch = words > 0 ? Math.max(0, Math.min(100, Math.round(206.835 - 1.015 * (words / Math.max(1, sents)) - 84.6 * (syllables / Math.max(1, words))))) : 0;
+            const readLvl = flesch >= 70 ? 'Easy' : flesch >= 50 ? 'OK' : flesch > 0 ? 'Hard' : '—';
+            const readEl = document.getElementById('slReadability');
+            if (readEl) readEl.textContent = words > 0 ? flesch + ' (' + readLvl + ')' : '—';
+
+            document.getElementById('slWords').textContent = words.toLocaleString();
+            document.getElementById('slRead').textContent = readMin + ' min';
+            document.getElementById('readingFill').style.width = Math.min(100, (words / writingGoal) * 100) + '%';
+
+            const goalPct = Math.min(100, Math.round((words / writingGoal) * 100));
+            const goalBar = document.getElementById('goalBar');
+            const goalLabel = document.getElementById('goalProgressLabel');
+            const goalPctEl = document.getElementById('goalPct');
+            if (goalBar) {
+                goalBar.style.width = goalPct + '%';
+                goalBar.style.background = goalPct >= 100
+                    ? 'linear-gradient(90deg,#27ae60,#2ecc71)' : 'linear-gradient(90deg,var(--accent),#e74c3c)';
+            }
+            if (goalLabel) goalLabel.textContent = words.toLocaleString() + ' / ' + writingGoal.toLocaleString() + ' words';
+            if (goalPctEl) goalPctEl.textContent = goalPct + '%';
+            if (words > 0 && words === writingGoal) showToast('🎉 Daily writing goal reached!', 3000);
+
+            updateAICacheInfo();
+            autoSave();
+        }
+
+        function updateWritingGoal(val) {
+            writingGoal = Math.max(100, parseInt(val) || 500);
+            localStorage.setItem('wc_goal', writingGoal);
+            updateWordCount();
+            showToast('Goal set: ' + writingGoal + ' words/day');
+        }
+
+        function updateAICacheInfo() {
+            const el = document.getElementById('aiCacheInfo');
+            if (!el) return;
+            const backend = localStorage.getItem('wc_ai_backend');
+            const modelId = localStorage.getItem('wc_ai_model');
+            if (backend && modelId) {
+                const meta = (typeof AI_MODEL_META !== 'undefined' && AI_MODEL_META[modelId]) || {};
+                el.textContent = (meta.label || modelId.split('/').pop()) + ' (' + (meta.size || '?') + ') — ' + (backend === 'webllm' ? 'GPU' : 'CPU');
+                el.style.color = '#27ae60';
+            } else {
+                el.textContent = 'No model cached';
+                el.style.color = '';
+            }
+        }
+
+        editor.addEventListener('input', () => {
+            updateWordCount();
+            updateOutline();
+        });
+
+        // ── OUTLINE ──
+        function updateOutline() {
+            const panel = document.getElementById('outlinePanel');
+            panel.innerHTML = '';
+            const headings = editor.querySelectorAll('h1,h2,h3,h4,h5,h6');
+            if (headings.length === 0) {
+                panel.innerHTML = '<div style="padding:12px;font-size:11px;color:var(--muted);">No headings yet</div>';
+                return;
+            }
+            headings.forEach(h => {
+                const lvl = parseInt(h.tagName[1]);
+                const item = document.createElement('div');
+                item.className = 'outline-item h' + Math.min(lvl, 3);
+                item.textContent = h.textContent;
+                item.onclick = () => h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                panel.appendChild(item);
+            });
+        }
+
+        // ── SIDEBAR TOGGLE ──
+        function toggleSidebar(side) {
+            const el = document.getElementById('sidebarLeft'.replace('Left', side === 'left' ? 'Left' : 'Right'));
+            const target = side === 'left' ? document.getElementById('sidebarLeft') : document.getElementById('sidebarRight');
+            target.classList.toggle('collapsed');
+        }
+        function switchLeftTab(el, tab) {
+            document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('outlinePanel').style.display = tab === 'outline' ? '' : 'none';
+            document.getElementById('pagesPanel').style.display = tab === 'pages' ? '' : 'none';
+        }
+        let aiInitialized = false;
+        function switchRightTab(el, tab) {
+            document.querySelectorAll('.right-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.right-panel').forEach(p => p.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('panel-' + tab).classList.add('active');
+            if (tab === 'ai' && !aiInitialized) {
+                aiInitialized = true;
+                initAIBackend();
+            }
+        }
+
+        // ── MOBILE DRAWERS ──
+        function toggleMobileSidebar(side) {
+            const isMobile = window.innerWidth <= 600;
+            if (isMobile) {
+                const target = side === 'left' ? document.getElementById('sidebarLeft') : document.getElementById('sidebarRight');
+                const isOpen = target.classList.contains('mobile-open');
+                closeAllDrawers();
+                if (!isOpen) {
+                    target.classList.add('mobile-open');
+                    document.getElementById('drawerOverlay').classList.add('visible');
+                }
+            } else {
+                toggleSidebar(side);
+            }
+        }
+        function closeAllDrawers() {
+            document.getElementById('sidebarLeft').classList.remove('mobile-open');
+            document.getElementById('sidebarRight').classList.remove('mobile-open');
+            document.getElementById('drawerOverlay').classList.remove('visible');
+        }
+
+        // ── MOBILE MENU ──
+        function openMobileMenu() { openModal('mobileMenuModal'); }
+
+        // ── ZOOM ──
+        function setZoom(z) {
+            currentZoom = z;
+            document.getElementById('editor').style.zoom = z / 100;
+            document.getElementById('zoomInput').value = z;
+            showToast('Zoom: ' + z + '%');
+        }
+        function adjustZoom(delta) {
+            setZoom(Math.max(50, Math.min(200, currentZoom + delta)));
+        }
+
+        // ── FOCUS MODE ──
+        function toggleFocusMode() {
+            focusMode = !focusMode;
+            document.documentElement.classList.toggle('focus-mode', focusMode);
+            document.getElementById('focusToggle').checked = focusMode;
+            showToast(focusMode ? 'Focus Mode — press Esc to exit' : 'Focus Mode off');
+        }
+
+        // ── DARK MODE ──
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            document.documentElement.classList.toggle('dark-mode', darkMode);
+            document.getElementById('darkToggle').checked = darkMode;
+            showToast(darkMode ? '🌙 Dark Mode on' : '☀️ Light Mode on');
+            localStorage.setItem('wc_dark', darkMode ? '1' : '');
+        }
+
+        // ── READING PROGRESS ──
+        document.getElementById('editorArea').addEventListener('scroll', function () {
+            const el = this;
+            const scrollTop = el.scrollTop;
+            const scrollHeight = el.scrollHeight - el.clientHeight;
+            const pct = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+            document.getElementById('readingProgress').style.width = pct + '%';
+        });
+
+        // ── FIND & REPLACE ──
+        function toggleFind() {
+            findOpen = !findOpen;
+            const b = document.getElementById('findBanner');
+            b.classList.toggle('open', findOpen);
+            if (findOpen) document.getElementById('findInput').focus();
+            else document.getElementById('findCount').textContent = '';
+        }
+        function doFind() {
+            const q = document.getElementById('findInput').value;
+            if (!q) { document.getElementById('findCount').textContent = ''; return; }
+            const text = editor.innerHTML;
+            const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            const matches = (text.match(regex) || []).length;
+            document.getElementById('findCount').textContent = matches ? matches + ' found' : 'Not found';
+        }
+        function doReplace() {
+            const q = document.getElementById('findInput').value;
+            const r = document.getElementById('replaceInput').value;
+            if (!q) return;
+            editor.innerHTML = editor.innerHTML.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), r);
+            updateWordCount();
+        }
+        function doReplaceAll() {
+            const q = document.getElementById('findInput').value;
+            const r = document.getElementById('replaceInput').value;
+            if (!q) return;
+            const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            const count = (editor.innerHTML.match(regex) || []).length;
+            editor.innerHTML = editor.innerHTML.replace(regex, r);
+            updateWordCount(); updateOutline();
+            showToast(`Replaced ${count} occurrence${count !== 1 ? 's' : ''}`);
+        }
+
+        // ── MENU DROPDOWN ──
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', e => {
+                e.stopPropagation();
+                const wasActive = item.classList.contains('active');
+                document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+                if (!wasActive) {
+                    item.classList.add('active');
+                    // Position dropdown
+                    const dd = item.querySelector('.dropdown');
+                    if (dd) {
+                        const rect = item.getBoundingClientRect();
+                        dd.style.top = rect.bottom + 'px';
+                        dd.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
+                    }
+                }
+            });
+        });
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+        });
+
+        // ── TABLE DIALOG ──
+        function showTableDialog() {
+            buildTableGrid();
+            openModal('tableModal');
+        }
+        function buildTableGrid() {
+            const grid = document.getElementById('tableGrid');
+            grid.innerHTML = '';
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'tg-cell';
+                    cell.dataset.r = r; cell.dataset.c = c;
+                    cell.addEventListener('mouseover', e => {
+                        const row = parseInt(e.target.dataset.r);
+                        const col = parseInt(e.target.dataset.c);
+                        grid.querySelectorAll('.tg-cell').forEach(cell2 => {
+                            cell2.classList.toggle('hover',
+                                parseInt(cell2.dataset.r) <= row && parseInt(cell2.dataset.c) <= col);
+                        });
+                        document.getElementById('tableRows').value = row + 1;
+                        document.getElementById('tableCols').value = col + 1;
+                    });
+                    cell.addEventListener('click', () => insertTable());
+                    grid.appendChild(cell);
+                }
+            }
+        }
+        function insertTable() {
+            const rows = parseInt(document.getElementById('tableRows').value) || 3;
+            const cols = parseInt(document.getElementById('tableCols').value) || 3;
+            editor.focus();
+            let html = '<table><thead><tr>';
+            for (let c = 0; c < cols; c++) html += `<th>Header ${c + 1}</th>`;
+            html += '</tr></thead><tbody>';
+            for (let r = 0; r < rows - 1; r++) {
+                html += '<tr>';
+                for (let c = 0; c < cols; c++) html += '<td>Cell</td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table><p></p>';
+            document.execCommand('insertHTML', false, html);
+            closeModal('tableModal');
+        }
+
+        // ── LINK ──
+        function insertLink() {
+            const sel = window.getSelection();
+            document.getElementById('linkText').value = sel.toString() || '';
+            document.getElementById('linkURL').value = '';
+            openModal('linkModal');
+        }
+        function doInsertLink() {
+            const text = document.getElementById('linkText').value || document.getElementById('linkURL').value;
+            const url = document.getElementById('linkURL').value;
+            if (!url) { closeModal('linkModal'); return; }
+            editor.focus();
+            const html = `<a href="${url}" target="_blank" style="color:var(--accent)">${text}</a>`;
+            document.execCommand('insertHTML', false, html);
+            closeModal('linkModal');
+        }
+
+        // ── IMAGE ──
+        function insertImage() {
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = 'image/*';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    editor.focus();
+                    document.execCommand('insertHTML', false,
+                        `<img src="${ev.target.result}" style="max-width:100%;border-radius:4px;margin:8px 0;" alt="${file.name}">`);
+                };
+                reader.readAsDataURL(file);
+            };
+            input.click();
+        }
+
+        // ── SPECIAL INSERTS ──
+        function insertHR() { editor.focus(); document.execCommand('insertHTML', false, '<hr class="page-break"><p></p>'); }
+        function insertBlockquote() { editor.focus(); document.execCommand('formatBlock', false, 'blockquote'); }
+        function insertCode() { editor.focus(); document.execCommand('formatBlock', false, 'pre'); }
+
+        // ── TRACK CHANGES ──
+        function toggleTrackChanges() {
+            trackChanges = !trackChanges;
+            document.getElementById('trackToggle').checked = trackChanges;
+            const btn = document.querySelector('.tb-btn[title="Track Changes"]');
+            if (btn) btn.classList.toggle('active', trackChanges);
+            showToast(trackChanges ? 'Track Changes enabled' : 'Track Changes disabled');
+        }
+
+        // ── SPELLCHECK ──
+        function toggleSpellcheck() {
+            const chk = document.getElementById('spellToggle').checked;
+            editor.spellcheck = chk;
+            showToast(`Spell check ${chk ? 'enabled' : 'disabled'}`);
+        }
+
+        // ── FILE OPS ──
+        function newDoc() {
+            if (editor.textContent.trim() && !confirm('Discard current document?')) return;
+            editor.innerHTML = '<h1>Untitled Document</h1><p>Start writing…</p>';
+            document.getElementById('filename').textContent = 'Untitled Document — WordCraft v0.2';
+            updateWordCount(); updateOutline();
+        }
+        function saveDoc() {
+            const blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>WordCraft Document</title></head><body>${editor.innerHTML}</body></html>`], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'wordcraft-document.html';
+            a.click();
+            showToast('Document saved');
+        }
+        function saveAsDoc() { saveDoc(); }
+        function openDoc() {
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = '.html,.htm,.txt';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const content = ev.target.result;
+                    if (file.name.endsWith('.html') || file.name.endsWith('.htm')) {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(content, 'text/html');
+                        editor.innerHTML = doc.body.innerHTML;
+                    } else {
+                        editor.innerHTML = `<p>${content.replace(/\n/g, '</p><p>')}</p>`;
+                    }
+                    document.getElementById('filename').textContent = file.name + ' — WordCraft v0.2';
+                    updateWordCount(); updateOutline();
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+        function exportPDF() { window.print(); }
+
+        // ── SHOW EXPORT MODAL ──
+        function showExportModal() { openModal('docxExportModal'); }
+        function selectExportFmt(fmt) {
+            currentExportFmt = fmt;
+            document.querySelectorAll('.export-option').forEach(el => el.classList.remove('selected'));
+            const id = { docx: 'expOptDocx', html: 'expOptHtml', md: 'expOptMd', txt: 'expOptTxt' }[fmt];
+            if (id) document.getElementById(id).classList.add('selected');
+        }
+
+        function doExport() {
+            const fn = document.getElementById('exportFilename').value || 'wordcraft-document';
+            const content = editor.innerHTML;
+            const text = editor.innerText;
+            let blob, filename;
+            if (currentExportFmt === 'html') {
+                blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${content}</body></html>`], { type: 'text/html' });
+                filename = fn + '.html';
+            } else if (currentExportFmt === 'txt') {
+                blob = new Blob([text], { type: 'text/plain' });
+                filename = fn + '.txt';
+            } else if (currentExportFmt === 'md') {
+                const md = htmlToMarkdown(content);
+                blob = new Blob([md], { type: 'text/markdown' });
+                filename = fn + '.md';
+            } else {
+                // docx — export as HTML with .docx-friendly note
+                blob = new Blob([`<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${content}</body></html>`], { type: 'text/html' });
+                filename = fn + '.html';
+                showToast('Exported as HTML (full .docx requires server-side processing)');
+            }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+            closeModal('docxExportModal');
+            showToast('Exported: ' + filename);
+        }
+
+        // ── HTML TO MARKDOWN ──
+        function htmlToMarkdown(html) {
+            let md = html;
+            md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
+            md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
+            md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
+            md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+            md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+            md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+            md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+            md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1\n\n');
+            md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+            md = md.replace(/<pre[^>]*>(.*?)<\/pre>/gi, '```\n$1\n```\n\n');
+            md = md.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n');
+            md = md.replace(/<ul[^>]*>|<\/ul>/gi, '\n');
+            md = md.replace(/<ol[^>]*>|<\/ol>/gi, '\n');
+            md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
+            md = md.replace(/<br\s*\/?>/gi, '\n');
+            md = md.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+            md = md.replace(/<[^>]+>/g, '');
+            md = md.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ');
+            md = md.replace(/\n{3,}/g, '\n\n');
+            return md.trim();
+        }
+
+        // ── DIALOGS ──
+        function showWordCount() {
+            const text = editor.innerText || '';
+            const words = text.trim() ? text.trim().split(/\s+/).filter(w => w).length : 0;
+            const chars = text.length;
+            const noSpaces = text.replace(/\s/g, '').length;
+            const paras = editor.querySelectorAll('p,h1,h2,h3').length;
+            const sents = (text.match(/[.!?]+/g) || []).length;
+            const pages = Math.max(1, Math.ceil(words / 250));
+            const readMin = Math.max(1, Math.round(words / 200));
+            const avgLen = words > 0 ? (noSpaces / words).toFixed(1) : '—';
+
+            // Flesch-Kincaid approximation
+            const syllables = text.split(/[aeiouAEIOU]/).length - 1;
+            const flesch = words > 0 ? Math.max(0, Math.min(100, Math.round(206.835 - 1.015 * (words / Math.max(1, sents)) - 84.6 * (syllables / Math.max(1, words))))) : '—';
+            const readLevel = typeof flesch === 'number' ? (flesch >= 70 ? 'Easy' : flesch >= 50 ? 'Standard' : 'Complex') : '—';
+
+            document.getElementById('wcModalWords').textContent = words.toLocaleString();
+            document.getElementById('wcModalChars').textContent = chars.toLocaleString();
+            document.getElementById('wcModalNoSpaces').textContent = noSpaces.toLocaleString();
+            document.getElementById('wcModalParas').textContent = paras;
+            document.getElementById('wcModalSents').textContent = sents;
+            document.getElementById('wcModalPages').textContent = pages;
+            document.getElementById('wcModalRead').textContent = readMin + ' min';
+            document.getElementById('wcModalAvg').textContent = avgLen + ' chars';
+            document.getElementById('wcModalFlesch').textContent = typeof flesch === 'number' ? `${flesch}/100 (${readLevel})` : '—';
+            openModal('wordCountModal');
+        }
+        function showAbout() { openModal('aboutModal'); }
+        function showShortcuts() { openModal('shortcutsModal'); }
+        function showTemplates() { openModal('templatesModal'); }
+
+        // ── TEMPLATES ──
+        const TEMPLATES = {
+            blank: '<h1>Untitled Document</h1><p>Start writing…</p>',
+            letter: `<p style="text-align:right;">Your Name<br>Address<br>City, State ZIP<br>${new Date().toLocaleDateString()}</p><p><br></p><p>Recipient Name<br>Title<br>Company<br>Address</p><p><br></p><p>Dear [Recipient],</p><p>I am writing to…</p><p>Sincerely,</p><p><br><br>[Your Name]</p>`,
+            report: `<h1>Report Title</h1><p style="color:#888;">Author · ${new Date().toLocaleDateString()}</p><h2>Executive Summary</h2><p>Brief overview of findings and recommendations.</p><h2>Introduction</h2><p>Background and context of this report.</p><h2>Findings</h2><p>Key findings and data analysis.</p><h2>Recommendations</h2><p>Recommended actions based on findings.</p><h2>Conclusion</h2><p>Summary and next steps.</p>`,
+            resume: `<h1>Your Name</h1><p>Email · Phone · LinkedIn · GitHub</p><h2>Summary</h2><p>Brief professional summary.</p><h2>Experience</h2><h3>Job Title — Company</h3><p style="color:#888;">Start – End</p><ul><li>Achievement or responsibility</li></ul><h2>Education</h2><h3>Degree — University</h3><p style="color:#888;">Year</p><h2>Skills</h2><p>Skill 1 · Skill 2 · Skill 3</p>`,
+            blog: `<h1>Blog Post Title</h1><p style="color:#888;">By Author · ${new Date().toLocaleDateString()} · Category</p><p>Hook sentence that grabs the reader's attention.</p><h2>Introduction</h2><p>Context and what this post will cover.</p><h2>Main Point 1</h2><p>Explanation and evidence.</p><h2>Main Point 2</h2><p>More detail and examples.</p><h2>Conclusion</h2><p>Summary and call to action.</p>`,
+            meeting: `<h1>Meeting Notes</h1><p><strong>Date:</strong> ${new Date().toLocaleDateString()} &nbsp; <strong>Time:</strong> &nbsp; <strong>Location:</strong></p><h2>Attendees</h2><ul><li>Name — Role</li></ul><h2>Agenda</h2><ol><li>Item 1</li><li>Item 2</li></ol><h2>Discussion</h2><p>Notes from discussion.</p><h2>Action Items</h2><table><thead><tr><th>Task</th><th>Owner</th><th>Due</th></tr></thead><tbody><tr><td></td><td></td><td></td></tr></tbody></table><h2>Next Meeting</h2><p>Date and agenda for next meeting.</p>`
+        };
+
+        function applyTemplate(name) {
+            if (!TEMPLATES[name]) return;
+            if (editor.textContent.trim() && !confirm('Replace current document with template?')) return;
+            editor.innerHTML = TEMPLATES[name];
+            updateWordCount(); updateOutline();
+            closeModal('templatesModal');
+            showToast('Template applied');
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        //  DUAL-BACKEND AI ENGINE v2 — WITH PERSISTENT CACHE
+        //  Fix: model is detected from Cache Storage on every load
+        //  so it never re-downloads unless the user switches models.
+        //
+        //  Cache strategy:
+        //  • WebLLM  → uses its own Cache Storage internally (MLC CDN)
+        //              We track which model was last used in localStorage.
+        //              On init we call CreateMLCEngine with the same modelId —
+        //              WebLLM checks its own cache first and loads in ~3s.
+        //  • Transformers.js → Hugging Face CDN files cached by the browser
+        //              automatically in Cache Storage (HTTP cache).
+        //              We just re-call pipeline() with same modelId and it
+        //              loads instantly from cache without re-downloading.
+        //
+        //  Persistence keys (localStorage):
+        //    wc_ai_backend  → 'webllm' | 'transformers'
+        //    wc_ai_model    → modelId string
+        //    wc_ai_history  → JSON array of last 8 prompts
+        // ══════════════════════════════════════════════════════════════
+
+        const AI = {
+            backend: null,
+            engine: null,   // WebLLM MLCEngine
+            pipeline: null,   // Transformers.js pipeline
+            modelId: null,
+            loading: false,
+            ready: false,
+            history: [],
+        };
+
+        const AI_CACHE_KEY_BACKEND = 'wc_ai_backend';
+        const AI_CACHE_KEY_MODEL = 'wc_ai_model';
+        const AI_CACHE_KEY_HISTORY = 'wc_ai_history';
+
+        const AI_SYSTEM_PROMPT =
+            `You are a writing assistant embedded in WordCraft, a word processor.
+Help users improve their writing. Be concise, practical, and direct.
+Return only the improved/processed text without preamble or explanation unless explicitly asked.`;
+
+        const AI_PROMPTS = {
+            summarize: 'Summarize the following text in 2–3 concise sentences:',
+            expand: 'Expand the following text with more detail, examples, and depth:',
+            formal: 'Rewrite the following text in a formal, professional tone:',
+            casual: 'Rewrite the following text in a conversational, friendly tone:',
+            fix: 'Fix all grammar, spelling, and punctuation errors. Return only the corrected text:',
+            bullets: 'Convert the following text into a clean, concise bullet-point list:',
+            shorter: 'Make the following text shorter and more concise without losing meaning:',
+            explain: 'Explain the following text in simple, plain language anyone can understand:',
+        };
+
+        const AI_MODEL_META = {
+            'Phi-3.5-mini-instruct-q4f16_1-MLC': { size: '2.4 GB', label: 'Phi-3.5 Mini', backend: 'webllm' },
+            'Llama-3.2-3B-Instruct-q4f16_1-MLC': { size: '2.0 GB', label: 'Llama 3.2 3B', backend: 'webllm' },
+            'TinyLlama-1.1B-Chat-v1.0-q4f16_1-MLC': { size: '0.7 GB', label: 'TinyLlama 1.1B', backend: 'webllm' },
+            'Xenova/flan-t5-small': { size: '80 MB', label: 'Flan-T5 Small', backend: 'transformers' },
+            'Xenova/distilbart-cnn-6-6': { size: '320 MB', label: 'DistilBART', backend: 'transformers' },
+            'Xenova/flan-t5-base': { size: '250 MB', label: 'Flan-T5 Base', backend: 'transformers' },
+        };
+
+        // ── LOAD HISTORY FROM LOCALSTORAGE ──
+        try {
+            const saved = localStorage.getItem(AI_CACHE_KEY_HISTORY);
+            if (saved) AI.history = JSON.parse(saved);
+        } catch (e) { }
+
+        // ── DETECTION & INIT (called when AI tab is first opened) ──
+        async function initAIBackend() {
+            setAIStatus('checking', 'Detecting AI capabilities…', '—', 'badge-none');
+
+            const hasWebGPU = await checkWebGPU();
+            const hasWASM = typeof WebAssembly !== 'undefined';
+
+            // Reveal model selector
+            showAIModelSelector(hasWebGPU);
+
+            if (!hasWebGPU && !hasWASM) {
+                setAIStatus('error', 'AI not supported in this browser', '✕', 'badge-none');
+                document.getElementById('aiNoSupport').classList.add('visible');
+                document.getElementById('aiDownloadArea').style.display = 'none';
+                return;
+            }
+
+            // ── CHECK IF A MODEL WAS PREVIOUSLY LOADED ──
+            const cachedBackend = localStorage.getItem(AI_CACHE_KEY_BACKEND);
+            const cachedModel = localStorage.getItem(AI_CACHE_KEY_MODEL);
+
+            if (cachedBackend && cachedModel) {
+                // Verify the cached model is compatible with this browser
+                const meta = AI_MODEL_META[cachedModel];
+                const isCacheValid = meta &&
+                    (meta.backend === 'transformers' || (meta.backend === 'webllm' && hasWebGPU));
+
+                if (isCacheValid) {
+                    // Set selector to cached model
+                    const sel = document.getElementById('aiModelSelector');
+                    const optVal = `${cachedBackend}:${cachedModel}`;
+                    // Find the matching option
+                    const opt = [...sel.options].find(o => o.value === optVal);
+                    if (opt) sel.value = optVal;
+
+                    // Auto-load from cache
+                    await autoLoadFromCache(cachedBackend, cachedModel);
+                    return;
+                }
+            }
+
+            // No cache — show download UI with smart defaults
+            if (hasWebGPU) {
+                setAIStatus('ready', 'WebGPU detected — GPU inference available', 'WebLLM', 'badge-webllm');
+                renderDownloadUI('Phi-3.5-mini-instruct-q4f16_1-MLC');
+            } else {
+                setAIStatus('ready', 'CPU mode — Transformers.js available', 'WASM', 'badge-transformers');
+                const sel = document.getElementById('aiModelSelector');
+                sel.value = 'transformers:Xenova/flan-t5-small';
+                renderDownloadUI('Xenova/flan-t5-small');
+            }
+        }
+
+        // ── AUTO-LOAD CACHED MODEL (fast path, no download) ──
+        async function autoLoadFromCache(backend, modelId) {
+            const meta = AI_MODEL_META[modelId] || {};
+            setAIStatus('loading',
+                `Resuming ${meta.label || modelId} from cache…`,
+                backend === 'webllm' ? 'WebLLM' : 'WASM',
+                backend === 'webllm' ? 'badge-webllm' : 'badge-transformers'
+            );
+
+            // Show a slim "resuming" bar (no download button needed)
+            const area = document.getElementById('aiDownloadArea');
+            area.classList.add('visible');
+            document.getElementById('aiDownloadTitle').textContent = `Resuming ${meta.label || modelId}`;
+            document.getElementById('aiDownloadSub').textContent = 'Loading from local cache — no download needed';
+            document.getElementById('aiDownloadBtn').style.display = 'none';
+            setProgress(10, 'Reading cache…');
+
+            AI.backend = backend;
+            AI.modelId = modelId;
+            AI.loading = true;
+
+            try {
+                if (backend === 'webllm') {
+                    await loadWebLLM(modelId, /* fromCache */ true);
+                } else {
+                    await loadTransformers(modelId, /* fromCache */ true);
+                }
+                onModelReady(backend, modelId);
+            } catch (err) {
+                // Cache miss or corruption — fall back to download UI
+                console.warn('Cache load failed, showing download UI:', err);
+                localStorage.removeItem(AI_CACHE_KEY_BACKEND);
+                localStorage.removeItem(AI_CACHE_KEY_MODEL);
+                AI.loading = false;
+                document.getElementById('aiDownloadBtn').style.display = '';
+                renderDownloadUI(modelId);
+                setAIStatus('ready', 'Cache miss — please reload model', '↺', 'badge-none');
+            }
+        }
+
+        async function checkWebGPU() {
+            try {
+                if (!navigator.gpu) return false;
+                const adapter = await Promise.race([
+                    navigator.gpu.requestAdapter(),
+                    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2500))
+                ]);
+                return !!adapter;
+            } catch { return false; }
+        }
+
+        // ── UI HELPERS ──
+        function setAIStatus(state, text, badge, badgeClass) {
+            document.getElementById('aiStatusDot').className = 'ai-status-dot ' + state;
+            document.getElementById('aiStatusText').textContent = text;
+            const bdg = document.getElementById('aiStatusBadge');
+            bdg.textContent = badge;
+            bdg.className = 'ai-status-badge ' + badgeClass;
+        }
+
+        function showAIModelSelector(includeWebLLM) {
+            const sel = document.getElementById('aiModelSelector');
+            sel.classList.add('visible');
+            if (!includeWebLLM) {
+                const webllmGroup = sel.querySelector('optgroup:first-child');
+                if (webllmGroup) webllmGroup.style.display = 'none';
+                sel.value = 'transformers:Xenova/flan-t5-small';
+            }
+        }
+
+        function renderDownloadUI(modelId) {
+            const meta = AI_MODEL_META[modelId] || { size: '?', label: modelId.split('/').pop() };
+            const area = document.getElementById('aiDownloadArea');
+            area.classList.add('visible');
+            document.getElementById('aiDownloadTitle').textContent = `${meta.label} · ${meta.size}`;
+            document.getElementById('aiDownloadSub').textContent =
+                meta.backend === 'webllm'
+                    ? 'GPU model — downloaded once, auto-loaded on future visits.'
+                    : 'CPU model — downloaded once, auto-loaded on future visits.';
+            document.getElementById('aiDownloadBtn').textContent = '⬇ Download & Load Model';
+            document.getElementById('aiDownloadBtn').disabled = false;
+            document.getElementById('aiDownloadBtn').style.display = '';
+            setProgress(0, 'Click to download');
+        }
+
+        function onModelChange(val) {
+            // User picked a different model from selector
+            if (AI.ready) {
+                // If a model is already loaded, don't reset — just show switch option
+                if (!confirm('Switch to a different model? The current model will be unloaded.')) return;
+            }
+            AI.ready = false;
+            AI.engine = null;
+            AI.pipeline = null;
+            AI.modelId = null;
+            document.getElementById('aiActiveArea').style.display = 'none';
+
+            const [backend, modelId] = val.split(':');
+            renderDownloadUI(modelId);
+            setAIStatus('ready',
+                'Model selected — click Download to load',
+                backend === 'webllm' ? 'WebLLM' : 'WASM',
+                backend === 'webllm' ? 'badge-webllm' : 'badge-transformers'
+            );
+        }
+
+        function setProgress(pct, label) {
+            document.getElementById('aiProgressFill').style.width = pct + '%';
+            document.getElementById('aiProgressLabel').textContent = label;
+        }
+
+        // ── LOAD MODEL (user-triggered) ──
+        async function loadSelectedModel() {
+            if (AI.loading) return;
+            const [backend, modelId] = document.getElementById('aiModelSelector').value.split(':');
+            AI.backend = backend;
+            AI.modelId = modelId;
+            AI.loading = true;
+
+            document.getElementById('aiDownloadBtn').disabled = true;
+            document.getElementById('aiDownloadBtn').textContent = 'Loading…';
+            setAIStatus('loading', 'Loading model…',
+                backend === 'webllm' ? 'WebLLM' : 'WASM',
+                backend === 'webllm' ? 'badge-webllm' : 'badge-transformers'
+            );
+
+            try {
+                if (backend === 'webllm') {
+                    await loadWebLLM(modelId, false);
+                } else {
+                    await loadTransformers(modelId, false);
+                }
+                // ── PERSIST selection to localStorage ──
+                localStorage.setItem(AI_CACHE_KEY_BACKEND, backend);
+                localStorage.setItem(AI_CACHE_KEY_MODEL, modelId);
+                onModelReady(backend, modelId);
+            } catch (err) {
+                AI.loading = false;
+                document.getElementById('aiDownloadBtn').disabled = false;
+                document.getElementById('aiDownloadBtn').textContent = '⬇ Retry';
+                setAIStatus('error', err.message.slice(0, 50), '✕', 'badge-none');
+                setProgress(0, '❌ ' + err.message.slice(0, 60));
+                showToast('AI load failed — see console');
+                console.error('AI load error:', err);
+            }
+        }
+
+        function onModelReady(backend, modelId) {
+            AI.ready = true;
+            AI.loading = false;
+            const meta = AI_MODEL_META[modelId] || { label: modelId.split('/').pop() };
+            document.getElementById('aiDownloadArea').classList.remove('visible');
+            document.getElementById('aiActiveArea').style.display = 'block';
+            setAIStatus('ready',
+                `${meta.label} · Ready`,
+                backend === 'webllm' ? 'GPU' : 'CPU',
+                backend === 'webllm' ? 'badge-webllm' : 'badge-transformers'
+            );
+            renderAIHistory();
+            showToast('✨ AI ready — ' + meta.label);
+        }
+
+        // ── LOAD WEBLLM ──
+        // WebLLM caches model weights internally in browser Cache Storage under
+        // its own CDN URLs. Calling CreateMLCEngine with the same modelId will
+        // detect the cached files and skip the network download automatically.
+        async function loadWebLLM(modelId, fromCache) {
+            setProgress(5, fromCache ? 'Importing WebLLM…' : 'Importing WebLLM library…');
+            const { CreateMLCEngine } = await import('https://esm.run/@mlc-ai/web-llm');
+            setProgress(10, fromCache ? 'Checking GPU cache…' : 'Initializing engine…');
+
+            AI.engine = await CreateMLCEngine(modelId, {
+                initProgressCallback: ({ progress, text }) => {
+                    const pct = Math.round(progress * 100);
+                    // Distinguish cache load vs fresh download from progress speed
+                    const stage = fromCache
+                        ? (pct < 80 ? 'Loading from cache…' : 'Initializing GPU…')
+                        : (pct < 50 ? 'Downloading weights…' : pct < 90 ? 'Loading into GPU…' : 'Finalizing…');
+                    setProgress(pct, `${stage} ${pct}%`);
+                }
+            });
+            setProgress(100, fromCache ? 'Loaded from cache!' : 'Download complete!');
+        }
+
+        // ── LOAD TRANSFORMERS.JS ──
+        // The browser's HTTP cache stores the model files after first download.
+        // Subsequent calls to pipeline() with the same modelId load instantly
+        // from cache — no network request made.
+        async function loadTransformers(modelId, fromCache) {
+            setProgress(10, fromCache ? 'Importing Transformers.js…' : 'Importing Transformers.js…');
+            const { pipeline, env } = await import(
+                'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3/dist/transformers.min.js'
+            );
+            env.allowRemoteModels = true;
+            env.allowLocalModels = false;
+
+            setProgress(20, fromCache ? 'Loading from browser cache…' : 'Downloading model weights…');
+
+            const taskMap = {
+                'Xenova/flan-t5-small': 'text2text-generation',
+                'Xenova/flan-t5-base': 'text2text-generation',
+                'Xenova/distilbart-cnn-6-6': 'summarization',
+            };
+
+            AI.pipeline = await pipeline(taskMap[modelId] || 'text2text-generation', modelId, {
+                progress_callback: ({ status, progress, file }) => {
+                    if (status === 'downloading' || status === 'loading') {
+                        const pct = progress ? Math.round(progress) : 55;
+                        const label = fromCache
+                            ? `From cache: ${(file || '').split('/').pop() || 'model'}…`
+                            : `Downloading ${(file || '').split('/').pop() || 'model'}… ${pct}%`;
+                        setProgress(20 + pct * 0.75, label);
+                    }
+                }
+            });
+            setProgress(100, fromCache ? 'Loaded from cache!' : 'Download complete!');
+        }
+
+        // ── QUICK ACTIONS ──
+        function aiQuickAction(action) {
+            const labels = {
+                summarize: 'Summarize selection',
+                expand: 'Expand selection',
+                formal: 'Make formal',
+                casual: 'Make casual',
+                fix: 'Fix grammar & spelling',
+                bullets: 'Convert to bullet points',
+                shorter: 'Make shorter',
+                explain: 'Explain simply',
+            };
+            const inp = document.getElementById('aiPromptInput');
+            inp.value = labels[action] || action;
+            inp.dataset.action = action;
+            inp.focus();
+        }
+
+        // ── RUN AI ──
+        async function runAIAssist() {
+            if (!AI.ready) { showToast('Load a model first'); return; }
+            if (AI.loading) return;
+
+            const sel = window.getSelection();
+            const selectedText = sel.toString().trim();
+            const promptInput = document.getElementById('aiPromptInput').value.trim();
+            const action = document.getElementById('aiPromptInput').dataset.action;
+            const responseTextEl = document.getElementById('aiResponseText');
+            const responseEl = document.getElementById('aiResponse');
+            const actionsEl = document.getElementById('aiResponseActions');
+            const runBtn = document.getElementById('aiRunBtn');
+            const runLabel = document.getElementById('aiRunLabel');
+
+            const inputText = selectedText || editor.innerText.substring(0, 800);
+            if (!inputText && !promptInput) { showToast('Select text or enter a prompt'); return; }
+
+            let fullPrompt = action && AI_PROMPTS[action]
+                ? `${AI_PROMPTS[action]}\n\n${inputText}`
+                : promptInput
+                    ? (inputText ? `${promptInput}\n\nText: "${inputText}"` : promptInput)
+                    : inputText;
+
+            // ── UI: loading state ──
+            AI.loading = true;
+            runBtn.disabled = true;
+            runLabel.innerHTML = '<span class="ai-loading-dots"><span></span><span></span><span></span></span>';
+            responseEl.classList.add('visible');
+            responseTextEl.innerHTML = '<span class="ai-loading-dots"><span></span><span></span><span></span></span>';
+            actionsEl.innerHTML = '';
+
+            try {
+                const result = AI.backend === 'webllm'
+                    ? await runWebLLM(fullPrompt, responseTextEl)
+                    : await runTransformers(fullPrompt, responseTextEl);
+
+                responseTextEl.innerHTML = result.replace(/\n/g, '<br>');
+                actionsEl.innerHTML = `
+      <button class="comment-btn" onclick="insertAIResult()">↩ Insert</button>
+      <button class="comment-btn" onclick="copyAIResult()">📋 Copy</button>
+      <button class="comment-btn" onclick="document.getElementById('aiResponse').classList.remove('visible')">✕ Dismiss</button>`;
+                responseEl.dataset.aiText = result;
+
+                // Execute any AI tool calls in the response
+                executeWordcraftAITools(result, responseTextEl);
+
+                addAIHistory(promptInput || action || 'request', result);
+
+            } catch (err) {
+                responseTextEl.innerHTML = `<span style="color:var(--accent);">Error: ${err.message}</span>`;
+                console.error('AI run error:', err);
+            } finally {
+                AI.loading = false;
+                runBtn.disabled = false;
+                runLabel.textContent = 'Run Assistant';
+                delete document.getElementById('aiPromptInput').dataset.action;
+            }
+        }
+
+        // ── WEBLLM STREAMING INFERENCE ──
+        async function runWebLLM(prompt, outputEl) {
+            const messages = [
+                { role: 'system', content: AI_SYSTEM_PROMPT + (AI_TOOL_DOCS || '') },
+                { role: 'user', content: prompt }
+            ];
+            let result = '';
+            outputEl.innerHTML = '<span class="ai-stream-cursor"></span>';
+
+            const stream = await AI.engine.chat.completions.create({
+                messages,
+                stream: true,
+                temperature: 0.7,
+                max_tokens: 700,
+                frequency_penalty: 0.2,
+            });
+
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content || '';
+                result += delta;
+                outputEl.innerHTML = result.replace(/\n/g, '<br>') + '<span class="ai-stream-cursor"></span>';
+                outputEl.closest('.ai-response').scrollTop = 99999;
+            }
+            outputEl.innerHTML = result.replace(/\n/g, '<br>');
+            return result;
+        }
+
+        // ── TRANSFORMERS.JS INFERENCE ──
+        async function runTransformers(prompt, outputEl) {
+            outputEl.innerHTML = '<span class="ai-loading-dots"><span></span><span></span><span></span></span>&nbsp;Processing…';
+            const opts = AI.modelId === 'Xenova/distilbart-cnn-6-6'
+                ? { max_new_tokens: 200 }
+                : { max_new_tokens: 350, temperature: 0.7, do_sample: true };
+            const out = await AI.pipeline(prompt, opts);
+            return out[0]?.summary_text || out[0]?.generated_text || '';
+        }
+
+        // ── INSERT / COPY ──
+        function insertAIResult() {
+            const text = document.getElementById('aiResponse').dataset.aiText;
+            if (!text) return;
+            editor.focus();
+            const sel = window.getSelection();
+            if (sel && sel.toString()) {
+                document.execCommand('insertText', false, text);
+            } else {
+                document.execCommand('insertHTML', false, `<p>${text.replace(/\n/g, '<br>')}</p>`);
+            }
+            showToast('✨ AI text inserted');
+            document.getElementById('aiResponse').classList.remove('visible');
+        }
+
+        function copyAIResult() {
+            const text = document.getElementById('aiResponse').dataset.aiText;
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
+        }
+
+        // ── HISTORY (persisted to localStorage) ──
+        function addAIHistory(prompt, result) {
+            AI.history.unshift({ prompt: prompt.slice(0, 50), result, ts: Date.now() });
+            if (AI.history.length > 8) AI.history.pop();
+            try { localStorage.setItem(AI_CACHE_KEY_HISTORY, JSON.stringify(AI.history)); } catch (e) { }
+            renderAIHistory();
+        }
+
+        function renderAIHistory() {
+            if (!AI.history.length) return;
+            const listEl = document.getElementById('aiHistoryList');
+            const historyEl = document.getElementById('aiHistory');
+            historyEl.classList.add('visible');
+            listEl.innerHTML = AI.history.map((h, i) => {
+                const ago = formatAgo(h.ts);
+                return `<div class="ai-history-item" onclick="restoreAIHistory(${i})" title="${h.prompt}">
+      <span>↩ ${h.prompt}…</span>
+      <span style="font-size:9px;color:var(--muted);margin-left:4px;">${ago}</span>
+    </div>`;
+            }).join('');
+        }
+
+        function formatAgo(ts) {
+            if (!ts) return '';
+            const mins = Math.round((Date.now() - ts) / 60000);
+            if (mins < 1) return 'just now';
+            if (mins < 60) return `${mins}m ago`;
+            const hrs = Math.round(mins / 60);
+            if (hrs < 24) return `${hrs}h ago`;
+            return `${Math.round(hrs / 24)}d ago`;
+        }
+
+        function restoreAIHistory(idx) {
+            const item = AI.history[idx];
+            if (!item) return;
+            const responseEl = document.getElementById('aiResponse');
+            document.getElementById('aiResponseText').innerHTML = item.result.replace(/\n/g, '<br>');
+            responseEl.dataset.aiText = item.result;
+            responseEl.classList.add('visible');
+            document.getElementById('aiResponseActions').innerHTML = `
+    <button class="comment-btn" onclick="insertAIResult()">↩ Insert</button>
+    <button class="comment-btn" onclick="copyAIResult()">📋 Copy</button>
+    <button class="comment-btn" onclick="document.getElementById('aiResponse').classList.remove('visible')">✕</button>`;
+        }
+
+        // ── CLEAR AI CACHE (accessible from Props panel) ──
+        function clearAICache() {
+            localStorage.removeItem(AI_CACHE_KEY_BACKEND);
+            localStorage.removeItem(AI_CACHE_KEY_MODEL);
+            localStorage.removeItem(AI_CACHE_KEY_HISTORY);
+            AI.history = [];
+            AI.ready = false;
+            AI.engine = null;
+            AI.pipeline = null;
+            document.getElementById('aiActiveArea').style.display = 'none';
+            document.getElementById('aiHistory').classList.remove('visible');
+            showToast('AI cache cleared — model will re-download next time');
+            // Reset status
+            setAIStatus('ready', 'Cache cleared — select a model to reload', '↺', 'badge-none');
+            document.getElementById('aiDownloadBtn').style.display = '';
+        }
+
+        // ══════════════════════════════════════════════
+        //  VERSION SNAPSHOTS
+        // ══════════════════════════════════════════════
+        const SNAP_KEY = 'wc_snapshots';
+        let snapshots = [];
+        try { snapshots = JSON.parse(localStorage.getItem(SNAP_KEY) || '[]'); } catch (e) { }
+
+        function saveSnapshot(name) {
+            name = name || document.getElementById('snapshotName')?.value?.trim() || ('Snapshot ' + new Date().toLocaleTimeString());
+            const snap = {
+                id: Date.now(),
+                name: name,
+                content: editor.innerHTML,
+                words: (editor.innerText.trim().split(/\s+/).filter(w => w).length),
+                ts: Date.now()
+            };
+            snapshots.unshift(snap);
+            if (snapshots.length > 15) snapshots.pop();
+            try { localStorage.setItem(SNAP_KEY, JSON.stringify(snapshots)); } catch (e) { }
+            renderSnapshots();
+            const inp = document.getElementById('snapshotName');
+            if (inp) inp.value = '';
+            showToast('📸 Snapshot saved: ' + name);
+        }
+
+        function restoreSnapshot(id) {
+            const snap = snapshots.find(s => s.id === id);
+            if (!snap) return;
+            if (!confirm('Restore this snapshot? Current content will be replaced.')) return;
+            editor.innerHTML = snap.content;
+            updateWordCount(); updateOutline();
+            showToast('↩ Restored: ' + snap.name);
+        }
+
+        function deleteSnapshot(id) {
+            snapshots = snapshots.filter(s => s.id !== id);
+            try { localStorage.setItem(SNAP_KEY, JSON.stringify(snapshots)); } catch (e) { }
+            renderSnapshots();
+            showToast('Snapshot deleted');
+        }
+
+        function renderSnapshots() {
+            const list = document.getElementById('snapshotsList');
+            if (!list) return;
+            if (!snapshots.length) {
+                list.innerHTML = '<div style="color:var(--muted);padding:8px;text-align:center;">No snapshots yet.<br>Save one to create a restore point.</div>';
+                return;
+            }
+            list.innerHTML = snapshots.map(s => {
+                const ago = formatSnapAgo(s.ts);
+                return `<div style="border:var(--rule);border-radius:5px;padding:8px 10px;margin-bottom:6px;background:var(--cream);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong style="font-size:11px;">${s.name}</strong>
+        <span style="font-size:9px;color:var(--muted);">${ago}</span>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin:3px 0;">${s.words} words</div>
+      <div style="display:flex;gap:4px;">
+        <button onclick="restoreSnapshot(${s.id})" style="font-size:9px;padding:2px 8px;border:var(--rule);border-radius:8px;cursor:pointer;background:#fff;color:var(--ink);font-family:'DM Sans',sans-serif;">↩ Restore</button>
+        <button onclick="deleteSnapshot(${s.id})" style="font-size:9px;padding:2px 8px;border:var(--rule);border-radius:8px;cursor:pointer;background:#fff;color:#e74c3c;font-family:'DM Sans',sans-serif;">✕</button>
+      </div>
+    </div>`;
+            }).join('');
+        }
+
+        function formatSnapAgo(ts) {
+            const mins = Math.round((Date.now() - ts) / 60000);
+            if (mins < 1) return 'just now';
+            if (mins < 60) return mins + 'm ago';
+            const hrs = Math.round(mins / 60);
+            if (hrs < 24) return hrs + 'h ago';
+            return Math.round(hrs / 24) + 'd ago';
+        }
+
+        renderSnapshots();
+
+        // ══════════════════════════════════════════════
+        //  AI ALGORITHM TOOLS — callable by local AI
+        //  The AI can invoke these via quick actions
+        //  or through tool-call patterns in responses
+        // ══════════════════════════════════════════════
+        const AI_TOOLS = {
+            // Text analysis tools
+            wordFrequency() {
+                const text = (window.getSelection().toString() || editor.innerText).toLowerCase();
+                const words = text.split(/\s+/).filter(w => w.length > 3);
+                const freq = {};
+                words.forEach(w => { w = w.replace(/[^a-z]/g, ''); if (w) freq[w] = (freq[w] || 0) + 1; });
+                const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 15);
+                return sorted.map(([w, c]) => `${w}: ${c}`).join('\n');
+            },
+
+            readabilityAnalysis() {
+                const text = editor.innerText;
+                const words = text.trim().split(/\s+/).filter(w => w).length;
+                const sents = (text.match(/[.!?]+/g) || []).length || 1;
+                const syllables = text.split(/[aeiouAEIOU]/).length - 1;
+                const flesch = Math.max(0, Math.min(100, Math.round(206.835 - 1.015 * (words / sents) - 84.6 * (syllables / words))));
+                const avgWordsPerSent = (words / sents).toFixed(1);
+                const avgSyllPerWord = (syllables / words).toFixed(2);
+                let level = flesch >= 80 ? '5th Grade (Very Easy)' : flesch >= 60 ? '8th Grade (Easy)' : flesch >= 40 ? 'College (Standard)' : 'Graduate (Complex)';
+                return `Flesch Score: ${flesch}/100 (${level})\nAvg words/sentence: ${avgWordsPerSent}\nAvg syllables/word: ${avgSyllPerWord}\nTotal sentences: ${sents}\nTotal words: ${words}`;
+            },
+
+            sentimentAnalysis() {
+                const text = (window.getSelection().toString() || editor.innerText).toLowerCase();
+                const positive = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'happy', 'love', 'best', 'perfect', 'beautiful', 'brilliant', 'outstanding'];
+                const negative = ['bad', 'terrible', 'awful', 'horrible', 'worst', 'hate', 'ugly', 'poor', 'fail', 'wrong', 'sad', 'angry', 'disappointing'];
+                let posCount = 0, negCount = 0;
+                positive.forEach(w => { const re = new RegExp('\\b' + w + '\\b', 'gi'); posCount += (text.match(re) || []).length; });
+                negative.forEach(w => { const re = new RegExp('\\b' + w + '\\b', 'gi'); negCount += (text.match(re) || []).length; });
+                const total = posCount + negCount;
+                const score = total > 0 ? Math.round((posCount / total) * 100) : 50;
+                return `Sentiment: ${score > 60 ? 'Positive' : score < 40 ? 'Negative' : 'Neutral'} (${score}%)\nPositive words: ${posCount}\nNegative words: ${negCount}`;
+            },
+
+            extractKeyPhrases() {
+                const text = (window.getSelection().toString() || editor.innerText);
+                const sentences = text.split(/[.!?]+/).filter(s => s.trim());
+                const bigrams = [];
+                sentences.forEach(s => {
+                    const words = s.trim().toLowerCase().split(/\s+/).filter(w => w.length > 3);
+                    for (let i = 0; i < words.length - 1; i++) {
+                        bigrams.push(words[i] + ' ' + words[i + 1]);
+                    }
+                });
+                const freq = {};
+                bigrams.forEach(b => { freq[b] = (freq[b] || 0) + 1; });
+                return Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([p, c]) => `"${p}" (${c}x)`).join('\n');
+            },
+
+            textStatistics() {
+                const text = editor.innerText;
+                const words = text.trim().split(/\s+/).filter(w => w).length;
+                const chars = text.length;
+                const charsNoSpace = text.replace(/\s/g, '').length;
+                const sents = (text.match(/[.!?]+/g) || []).length || 1;
+                const paras = editor.querySelectorAll('p,h1,h2,h3,h4,h5,h6').length;
+                const headings = editor.querySelectorAll('h1,h2,h3').length;
+                const links = editor.querySelectorAll('a').length;
+                const images = editor.querySelectorAll('img').length;
+                const readMin = Math.max(1, Math.round(words / 200));
+                return `Words: ${words}\nCharacters: ${chars}\nCharacters (no space): ${charsNoSpace}\nSentences: ${sents}\nParagraphs: ${paras}\nHeadings: ${headings}\nLinks: ${links}\nImages: ${images}\nReading time: ~${readMin} min`;
+            },
+
+            findLongSentences() {
+                const text = editor.innerText;
+                const sents = text.split(/[.!?]+/).filter(s => s.trim());
+                const long = sents.filter(s => s.trim().split(/\s+/).length > 25);
+                if (!long.length) return 'No sentences longer than 25 words found.';
+                return `${long.length} long sentence(s):\n\n` + long.map((s, i) => `${i + 1}. (${s.trim().split(/\s+/).length} words) "${s.trim().substring(0, 80)}…"`).join('\n');
+            },
+
+            findRepeatedWords() {
+                const text = (window.getSelection().toString() || editor.innerText).toLowerCase();
+                const words = text.split(/\s+/).filter(w => w.length > 4).map(w => w.replace(/[^a-z]/g, ''));
+                const freq = {};
+                words.forEach(w => { if (w) freq[w] = (freq[w] || 0) + 1; });
+                const repeated = Object.entries(freq).filter(([, c]) => c >= 3).sort((a, b) => b[1] - a[1]).slice(0, 10);
+                if (!repeated.length) return 'No highly repeated words found (3+ occurrences).';
+                return 'Repeated words:\n' + repeated.map(([w, c]) => `"${w}" — ${c} times`).join('\n');
+            },
+
+            generateOutline() {
+                const headings = editor.querySelectorAll('h1,h2,h3,h4,h5,h6');
+                if (!headings.length) return 'No headings found in document.';
+                return Array.from(headings).map(h => {
+                    const level = parseInt(h.tagName[1]);
+                    return '  '.repeat(level - 1) + '- ' + h.textContent.trim();
+                }).join('\n');
+            },
+
+            insertAtCursor(text) {
+                editor.focus();
+                document.execCommand('insertText', false, text);
+                return 'Inserted text at cursor.';
+            },
+
+            replaceSelection(newText) {
+                const sel = window.getSelection();
+                if (!sel || !sel.toString()) return 'No text selected.';
+                editor.focus();
+                document.execCommand('insertText', false, newText);
+                return 'Selection replaced.';
+            },
+
+            exportAsMarkdown() {
+                const md = htmlToMarkdown(editor.innerHTML);
+                return md;
+            }
+        };
+
+        // Make AI tools available globally for the AI engine to call
+        window.AI_TOOLS = AI_TOOLS;
+
+        // Enhanced AI system prompt with tool awareness
+        const AI_TOOL_DOCS = `
+You also have access to these analysis tools you can suggest the user invoke:
+- wordFrequency: Get top word frequencies
+- readabilityAnalysis: Flesch score and readability metrics
+- sentimentAnalysis: Positive/negative sentiment scoring
+- extractKeyPhrases: Find common phrases
+- textStatistics: Full document stats
+- findLongSentences: Find sentences over 25 words
+- findRepeatedWords: Find overused words
+- generateOutline: Extract document outline
+To use a tool, include <<TOOL:toolName>> in your response.`;
+
+        // Execute AI tool calls found in response text
+        function executeWordcraftAITools(text, outputEl) {
+            const toolRe = /<<TOOL:(\w+)(?:\|([^>]*))?>>)/gi;  // matches <<TOOL:name>> or <<TOOL:name|arg>>
+            const toolRe2 = /<<TOOL:(\w+)(?:\|([^>]*))?>/gi;
+            let match;
+            const results = [];
+            while ((match = toolRe2.exec(text)) !== null) {
+                const toolName = match[1];
+                const args = match[2] ? match[2].split('|').map(a => a.trim()) : [];
+                if (AI_TOOLS[toolName]) {
+                    try {
+                        const result = AI_TOOLS[toolName](...args);
+                        results.push({ tool: toolName, result });
+                    } catch (e) {
+                        results.push({ tool: toolName, result: 'Error: ' + e.message });
+                    }
+                }
+            }
+            if (results.length && outputEl) {
+                const toolHTML = results.map(r =>
+                    `<div style="margin-top:8px;padding:8px;background:var(--accent-light);border-radius:6px;font-size:11px;">` +
+                    `<strong>🔧 ${r.tool}</strong><br><pre style="white-space:pre-wrap;font-family:'JetBrains Mono',monospace;font-size:10px;margin:4px 0 0;">${r.result}</pre></div>`
+                ).join('');
+                outputEl.innerHTML += toolHTML;
+            }
+            return results;
+        }
+
+        // ── BOOT ──
+        // AI initializes lazily when user opens the AI tab (in switchRightTab)
+
+        // ── MODALS ──
+        function openModal(id) { document.getElementById(id).classList.add('open'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+        document.querySelectorAll('.modal-overlay').forEach(el => {
+            el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+        });
+
+        // ── PAGE SIZE / ORIENTATION ──
+        function setPageSize(size) {
+            const sizes = { 'US Letter': '850px', 'A4': '827px', 'Legal': '850px' };
+            document.querySelector('.page').style.maxWidth = sizes[size] || '850px';
+            showToast(`Page: ${size}`);
+        }
+        function setOrientation(orient) {
+            document.querySelector('.page').style.maxWidth = orient === 'Landscape' ? '1200px' : '850px';
+            showToast(`Orientation: ${orient}`);
+        }
+
+        // ── COMMENTS ──
+        function addComment() {
+            const text = document.getElementById('newCommentText').value.trim();
+            if (!text) return;
+            const panel = document.getElementById('panel-comments');
+            const card = document.createElement('div');
+            card.className = 'comment-card';
+            card.innerHTML = `<div class="comment-author">You</div><div class="comment-time">Just now</div>
+    <div class="comment-text">${text}</div>
+    <div class="comment-actions">
+      <button class="comment-btn">Reply</button>
+      <button class="comment-btn" onclick="this.closest('.comment-card').remove()">Resolve ✓</button>
+    </div>`;
+            panel.insertBefore(card, panel.querySelector('.add-comment-area'));
+            document.getElementById('newCommentText').value = '';
+            showToast('Comment added');
+        }
+
+        // ── TOAST ──
+        function showToast(msg, duration = 2200) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), duration);
+        }
+
+        // ── AUTO-SAVE ──
+        let saveTimer;
+        function autoSave() {
+            const statusEl = document.getElementById('saveStatus');
+            statusEl.innerHTML = '<div class="status-dot" style="background:#f39c12;"></div><span id="trackStatus">Saving…</span>';
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+                statusEl.innerHTML = '<div class="status-dot"></div><span id="trackStatus">Saved</span>';
+                try { localStorage.setItem('wc_doc', editor.innerHTML); } catch (e) { }
+            }, 1500);
+        }
+
+        // ── CONTEXT SELECTION TOOLBAR ──
+        let ctxHideTimer = null;
+        const contextToolbar = document.getElementById('contextToolbar');
+
+        function showContextToolbar(x, y) {
+            clearTimeout(ctxHideTimer);
+            // Position above selection, clamped to viewport
+            const tw = 280, th = 38;
+            const left = Math.max(8, Math.min(x - tw / 2, window.innerWidth - tw - 8));
+            const top = Math.max(8, y - th - 10);
+            contextToolbar.style.left = left + 'px';
+            contextToolbar.style.top = top + 'px';
+            contextToolbar.classList.add('visible');
+        }
+        function hideContextToolbar() {
+            ctxHideTimer = setTimeout(() => contextToolbar.classList.remove('visible'), 200);
+        }
+
+        editor.addEventListener('mouseup', () => {
+            setTimeout(() => {
+                const sel = window.getSelection();
+                if (sel && sel.toString().trim().length > 2) {
+                    const range = sel.getRangeAt(0);
+                    const rect = range.getBoundingClientRect();
+                    showContextToolbar(rect.left + rect.width / 2, rect.top + window.scrollY);
+                } else {
+                    hideContextToolbar();
+                }
+            }, 10);
+        });
+        editor.addEventListener('touchend', () => {
+            setTimeout(() => {
+                const sel = window.getSelection();
+                if (sel && sel.toString().trim().length > 2) {
+                    const range = sel.getRangeAt(0);
+                    const rect = range.getBoundingClientRect();
+                    showContextToolbar(rect.left + rect.width / 2, rect.top);
+                }
+            }, 80);
+        });
+        document.addEventListener('mousedown', e => {
+            if (!contextToolbar.contains(e.target) && e.target !== contextToolbar) {
+                hideContextToolbar();
+            }
+        });
+
+        function ctxAIAssist(action) {
+            hideContextToolbar();
+            if (!AI.ready) {
+                // Open AI tab and show toast
+                const aiTab = document.querySelector('.right-tab:nth-child(2)');
+                if (aiTab) aiTab.click();
+                showToast('Load an AI model first in the AI tab');
+                return;
+            }
+            aiQuickAction(action);
+            // Open right sidebar if collapsed
+            const sidebarRight = document.getElementById('sidebarRight');
+            if (sidebarRight.classList.contains('collapsed')) toggleSidebar('right');
+            // Switch to AI tab
+            const aiTabEl = document.querySelector('[onclick*="ai"]');
+            if (aiTabEl) aiTabEl.click();
+            runAIAssist();
+        }
+
+        // ── SCROLL NAV ──
+        const editorArea = document.getElementById('editorArea');
+        const scrollNav = document.getElementById('scrollNav');
+        let scrollTimer = null;
+
+        editorArea.addEventListener('scroll', () => {
+            scrollNav.classList.add('visible');
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => scrollNav.classList.remove('visible'), 2000);
+        });
+
+        function scrollToTop() {
+            editorArea.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        function scrollToBottom() {
+            editorArea.scrollTo({ top: editorArea.scrollHeight, behavior: 'smooth' });
+        }
+
+        // ── TYPEWRITER MODE ──
+        let typewriterMode = false;
+        function toggleTypewriterMode() {
+            typewriterMode = !typewriterMode;
+            document.documentElement.classList.toggle('typewriter-mode', typewriterMode);
+            showToast(typewriterMode ? '⌨ Typewriter mode on' : 'Typewriter mode off');
+        }
+
+        // Auto-scroll to keep cursor centered in typewriter mode
+        editor.addEventListener('keydown', () => {
+            if (!typewriterMode) return;
+            requestAnimationFrame(() => {
+                const sel = window.getSelection();
+                if (!sel.rangeCount) return;
+                const range = sel.getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+                const ea = document.getElementById('editorArea');
+                const target = ea.scrollTop + rect.top - (window.innerHeight * 0.45);
+                ea.scrollTo({ top: target, behavior: 'smooth' });
+            });
+        });
+
+        // ── KEYBOARD SHORTCUTS ──
+        document.addEventListener('keydown', e => {
+            const ctrl = e.ctrlKey || e.metaKey;
+            if (ctrl && e.key === 's') { e.preventDefault(); saveDoc(); }
+            if (ctrl && e.key === 'h') { e.preventDefault(); toggleFind(); }
+            if (ctrl && e.key === 'k') { e.preventDefault(); insertLink(); }
+            if (ctrl && e.key === 'n') { e.preventDefault(); newDoc(); }
+            if (ctrl && e.shiftKey && (e.key === 'O' || e.key === 'o')) { e.preventDefault(); openDocxFile(); }
+            if (ctrl && e.key === 'e') { e.preventDefault(); showExportModal(); }
+            if (ctrl && e.shiftKey && (e.key === 'D' || e.key === 'd')) { e.preventDefault(); toggleDarkMode(); }
+            if (ctrl && e.shiftKey && (e.key === 'T' || e.key === 't')) { e.preventDefault(); toggleTypewriterMode(); }
+            if (e.key === 'F11') { e.preventDefault(); toggleFocusMode(); }
+            if (e.key === 'Escape') {
+                if (focusMode) toggleFocusMode();
+                if (findOpen) toggleFind();
+                hideContextToolbar();
+                document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+                closeAllDrawers();
+            }
+        });
+
+        // ── LOAD SAVED ──
+        try {
+            const saved = localStorage.getItem('wc_doc');
+            if (saved) { editor.innerHTML = saved; showToast('Previous session restored'); }
+            if (localStorage.getItem('wc_dark')) toggleDarkMode();
+        } catch (e) { }
+
+        // ── RESTORE WRITING GOAL ──
+        try {
+            const savedGoal = localStorage.getItem('wc_goal');
+            if (savedGoal) {
+                writingGoal = parseInt(savedGoal);
+                const inp = document.getElementById('writingGoalInput');
+                if (inp) inp.value = writingGoal;
+            }
+        } catch (e) { }
+
+        updateWordCount();
+        updateOutline();
+        updateAICacheInfo();
+
+        // ── RULER ──
+        (function buildRuler() {
+            const ruler = document.getElementById('rulerInner');
+            if (!ruler) return;
+            for (let i = 0; i <= 17; i++) {
+                const pos = i * 50;
+                const mark = document.createElement('div');
+                mark.className = 'ruler-mark';
+                mark.style.left = pos + 'px';
+                mark.style.height = i % 2 === 0 ? '10px' : '6px';
+                ruler.appendChild(mark);
+                if (i % 2 === 0 && i > 0) {
+                    const label = document.createElement('div');
+                    label.className = 'ruler-label';
+                    label.style.left = pos + 'px';
+                    label.textContent = Math.round(i / 2);
+                    ruler.appendChild(label);
+                }
+            }
+        })();
+
+        // ══════════════════════════════════════════════
+        //  DOCX IMPORT (mammoth.js)
+        // ══════════════════════════════════════════════
+        function openDocxFile() {
+            openModal('docxImportModal');
+            document.getElementById('docxProgress').classList.remove('visible');
+            document.getElementById('docxWarnings').classList.remove('visible');
+            document.getElementById('docxProgressBar').style.width = '0%';
+        }
+
+        const dropZone = document.getElementById('docxDropZone');
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault(); dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && (file.name.endsWith('.docx') || file.type.includes('wordprocessingml'))) {
+                handleDocxFile(file);
+            } else { showToast('Please drop a .docx file'); }
+        });
+
+        function handleDocxFile(file) {
+            if (!file) return;
+            if (!file.name.endsWith('.docx') && !file.type.includes('wordprocessingml')) {
+                showToast('⚠ Please select a valid .docx file'); return;
+            }
+            const progress = document.getElementById('docxProgress');
+            const bar = document.getElementById('docxProgressBar');
+            const label = document.getElementById('docxProgressLabel');
+            progress.classList.add('visible');
+            label.textContent = 'Reading file…'; bar.style.width = '20%';
+
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+                bar.style.width = '50%'; label.textContent = 'Parsing OOXML…';
+                try {
+                    const arrayBuffer = e.target.result;
+                    bar.style.width = '70%'; label.textContent = 'Converting…';
+                    const result = await mammoth.convertToHtml({ arrayBuffer }, {
+                        styleMap: [
+                            "p[style-name='Heading 1'] => h1:fresh",
+                            "p[style-name='Heading 2'] => h2:fresh",
+                            "p[style-name='Heading 3'] => h3:fresh",
+                            "p[style-name='Quote'] => blockquote",
+                            "p[style-name='Code'] => pre",
+                            "r[style-name='Strong'] => strong",
+                            "r[style-name='Emphasis'] => em",
+                            "r[style-name='Code Char'] => code",
+                        ],
+                        convertImage: mammoth.images.imgElement(function (image) {
+                            return image.read("base64").then(function (imageBuffer) {
+                                return { src: "data:" + image.contentType + ";base64," + imageBuffer };
+                            });
+                        }),
+                    });
+                    bar.style.width = '100%'; label.textContent = 'Done!';
+                    editor.innerHTML = result.value;
+                    document.getElementById('filename').textContent = file.name + ' — WordCraft v0.2';
+                    if (result.messages && result.messages.length > 0) {
+                        const warns = document.getElementById('docxWarnings');
+                        warns.innerHTML = '<strong>⚠ Conversion notes:</strong><br>' +
+                            result.messages.slice(0, 5).map(m => m.message).join('<br>');
+                        warns.classList.add('visible');
+                    }
+                    updateWordCount(); updateOutline();
+                    setTimeout(() => { closeModal('docxImportModal'); showToast('Document imported!'); }, 600);
+                } catch (err) {
+                    label.textContent = 'Error: ' + err.message;
+                    showToast('Import failed: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+
+</html>

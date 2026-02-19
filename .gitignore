@@ -1,0 +1,11 @@
+# Old renamed files (kept as backup)
+Prezai.html
+Nexasheet.html
+
+# IDE / System
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+.DS_Store

@@ -2469,6 +2469,47 @@
 
     function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') }
 
+    // ── CONDITIONAL FORMATTING ENGINE ──
+    const condFormats = []; // { range:{startCol,startRow,endCol,endRow}, rule:{type,value,value2}, style:{color,bg} }
+
+    function evalConditionalFormat(key, dispVal, sh) {
+      const ref = parseRef(key);
+      if (!ref) return {};
+      let result = {};
+      for (const cf of condFormats) {
+        const { range, rule, style } = cf;
+        const colIdx = ref.col.charCodeAt(0) - 65;
+        if (colIdx < range.startCol || colIdx > range.endCol) continue;
+        if (ref.row < range.startRow || ref.row > range.endRow) continue;
+        const num = parseFloat(dispVal);
+        const isNum = !isNaN(num);
+        let match = false;
+        switch (rule.type) {
+          case 'greater': match = isNum && num > parseFloat(rule.value); break;
+          case 'less': match = isNum && num < parseFloat(rule.value); break;
+          case 'equal': match = String(dispVal) === String(rule.value); break;
+          case 'not-blank': match = dispVal !== '' && dispVal != null; break;
+          case 'between': match = isNum && num >= parseFloat(rule.value) && num <= parseFloat(rule.value2); break;
+          case 'contains': match = String(dispVal).toLowerCase().includes(String(rule.value).toLowerCase()); break;
+          case 'negative': match = isNum && num < 0; break;
+          case 'positive': match = isNum && num > 0; break;
+        }
+        if (match) Object.assign(result, style);
+      }
+      return result;
+    }
+
+    function parseRange(rangeStr) {
+      const m = rangeStr.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i);
+      if (!m) return null;
+      return {
+        startCol: m[1].toUpperCase().charCodeAt(0) - 65,
+        startRow: parseInt(m[2]),
+        endCol: m[3].toUpperCase().charCodeAt(0) - 65,
+        endRow: parseInt(m[4])
+      };
+    }
+
     // ── GRID RENDERER ──────────────────────────────────────────────────
     function renderGrid() {
       const sh = getSheet();
@@ -4071,8 +4112,7 @@ Use tools when asked to DO something. Be concise.`;
       }
     });
 
-    // ── CONDITIONAL FORMATTING ENGINE ──
-    const condFormats = []; // { range:{startCol,startRow,endCol,endRow}, rule:{type,value,value2}, style:{color,bg} }
+    // (condFormats, evalConditionalFormat, parseRange moved above renderGrid)
 
     function addCondFormat(rangeStr, ruleType, value, style, value2) {
       const parsed = parseRange(rangeStr);
@@ -4084,44 +4124,6 @@ Use tools when asked to DO something. Be concise.`;
     function removeCondFormat(index) {
       condFormats.splice(index, 1);
       renderGrid();
-    }
-
-    function evalConditionalFormat(key, dispVal, sh) {
-      const ref = parseRef(key);
-      if (!ref) return {};
-      let result = {};
-      for (const cf of condFormats) {
-        const { range, rule, style } = cf;
-        const colIdx = ref.col.charCodeAt(0) - 65;
-        if (colIdx < range.startCol || colIdx > range.endCol) continue;
-        if (ref.row < range.startRow || ref.row > range.endRow) continue;
-        const num = parseFloat(dispVal);
-        const isNum = !isNaN(num);
-        let match = false;
-        switch (rule.type) {
-          case 'greater': match = isNum && num > parseFloat(rule.value); break;
-          case 'less': match = isNum && num < parseFloat(rule.value); break;
-          case 'equal': match = String(dispVal) === String(rule.value); break;
-          case 'not-blank': match = dispVal !== '' && dispVal != null; break;
-          case 'between': match = isNum && num >= parseFloat(rule.value) && num <= parseFloat(rule.value2); break;
-          case 'contains': match = String(dispVal).toLowerCase().includes(String(rule.value).toLowerCase()); break;
-          case 'negative': match = isNum && num < 0; break;
-          case 'positive': match = isNum && num > 0; break;
-        }
-        if (match) Object.assign(result, style);
-      }
-      return result;
-    }
-
-    function parseRange(rangeStr) {
-      const m = rangeStr.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i);
-      if (!m) return null;
-      return {
-        startCol: m[1].toUpperCase().charCodeAt(0) - 65,
-        startRow: parseInt(m[2]),
-        endCol: m[3].toUpperCase().charCodeAt(0) - 65,
-        endRow: parseInt(m[4])
-      };
     }
 
     // Quick conditional format presets
